@@ -32,6 +32,7 @@ public class LogsListener {
         LogKbart entity = logsMapper.map(dto, LogKbart.class);
         Timestamp timestamp = new Timestamp(message.timestamp());
         entity.setTimestamp(new Date(timestamp.getTime()));
+        entity.setPackageName(message.key());
         repository.save(entity);
     }
 }

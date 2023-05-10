@@ -1,6 +1,8 @@
 package fr.abes.logskbart.utils;
 
 import fr.abes.logskbart.dto.Bacon2KafkaDto;
+import fr.abes.logskbart.dto.LigneLogDto;
+import fr.abes.logskbart.dto.LogDto;
 import fr.abes.logskbart.entity.LogKbart;
 import org.modelmapper.Converter;
 import org.modelmapper.spi.MappingContext;
@@ -38,4 +40,17 @@ public class LogsMapper {
         mapper.addConverter(myConverter);
     }
 
+    @Bean
+    public void converterLogKbartToLogDto() {
+        Converter<LogKbart, LigneLogDto> myConverter = new Converter<LogKbart, LigneLogDto>() {
+            public LigneLogDto convert(MappingContext<LogKbart, LigneLogDto> context) {
+                LogKbart source = context.getSource();
+                LigneLogDto target = new LigneLogDto();
+                target.setLevel(source.getLevel().toString());
+                target.setMessage(source.getMessage());
+                return target;
+            }
+        };
+        mapper.addConverter(myConverter);
+    }
 }

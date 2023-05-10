@@ -20,6 +20,9 @@ public class LogKbart implements Serializable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "PACKAGE_NAME")
+    private String packageName;
+
     @Column(name = "TIMESTAMP")
     private Date timestamp;
 
