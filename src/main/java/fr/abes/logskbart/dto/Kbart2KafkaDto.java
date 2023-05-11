@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Bacon2KafkaDto {
+public class Kbart2KafkaDto {
     private InstantDto instant;
     private String thread;
     private String level;
