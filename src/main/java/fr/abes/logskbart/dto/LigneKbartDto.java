@@ -2,6 +2,7 @@ package fr.abes.logskbart.dto;
 
 import com.opencsv.bean.CsvBindByName;
 import com.opencsv.bean.CsvBindByPosition;
+import com.opencsv.bean.CsvToBean;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
@@ -9,17 +10,13 @@ import lombok.NoArgsConstructor;
 
 @Data
 @NoArgsConstructor
-@ApiModel(description = "Lines extracted from a kbart file")
 public class LigneKbartDto {
-    @ApiModelProperty("Title of the publication")
     @CsvBindByName(column = "publication_title")
     @CsvBindByPosition(position = 0)
     private String publication_title;
-    @ApiModelProperty("ISBN number")
     @CsvBindByName(column = "print_identifier")
     @CsvBindByPosition(position = 1)
     private String print_identifier;
-    @ApiModelProperty("ISSN number")
     @CsvBindByName(column = "online_identifier")
     @CsvBindByPosition(position = 2)
     private String online_identifier;
@@ -44,7 +41,6 @@ public class LigneKbartDto {
     @CsvBindByName(column = "title_url")
     @CsvBindByPosition(position = 9)
     private String title_url;
-    @ApiModelProperty("First author")
     @CsvBindByName(column = "first_author")
     @CsvBindByPosition(position = 10)
     private String first_author;
@@ -63,14 +59,12 @@ public class LigneKbartDto {
     @CsvBindByName(column = "publisher_name")
     @CsvBindByPosition(position = 15)
     private String publisher_name;
-    @ApiModelProperty("Publication type")
     @CsvBindByName(column = "publication_type")
     @CsvBindByPosition(position = 16)
     private String publication_type;
     @CsvBindByName(column = "date_monograph_published_print")
     @CsvBindByPosition(position = 17)
     private String date_monograph_published_print;
-    @ApiModelProperty("Date of publication of the online monograph")
     @CsvBindByName(column = "date_monograph_published_online")
     @CsvBindByPosition(position = 18)
     private String date_monograph_published_online;
@@ -80,7 +74,6 @@ public class LigneKbartDto {
     @CsvBindByName(column = "monograph_edition")
     @CsvBindByPosition(position = 20)
     private String monograph_edition;
-    @ApiModelProperty("First editor")
     @CsvBindByName(column = "first_editor")
     @CsvBindByPosition(position = 21)
     private String first_editor;

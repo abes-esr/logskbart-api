@@ -5,17 +5,17 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class KbartLoaderFactory {
-    private final KbartToCsvService kbartToCsvService;
+    private final KbartToTsvService kbartToTsvService;
     private final KbartToBddService kbartToBddService;
 
-    public KbartLoaderFactory(KbartToCsvService kbartToCsvService, KbartToBddService kbartToBddService) {
-        this.kbartToCsvService = kbartToCsvService;
+    public KbartLoaderFactory(KbartToTsvService kbartToTsvService, KbartToBddService kbartToBddService) {
+        this.kbartToTsvService = kbartToTsvService;
         this.kbartToBddService = kbartToBddService;
     }
 
     public KbartLoader getLoader(LoaderType type) {
         return switch (type) {
-            case csv -> kbartToCsvService;
+            case tsv -> kbartToTsvService;
             case bdd -> kbartToBddService;
         };
     }

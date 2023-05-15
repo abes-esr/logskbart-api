@@ -26,7 +26,7 @@ public class LogsListener {
     @Autowired
     private LogKbartRepository repository;
 
-    @KafkaListener(topics = {"infokbart2kafka", "errorkbart2kafka"}, groupId = "logskbart")
+    @KafkaListener(topics = {"infokbart2kafka", "errorkbart2kafka"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoBacon2Kafka(ConsumerRecord<String, String> message) throws JsonProcessingException {
         Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
         LogKbart entity = logsMapper.map(dto, LogKbart.class);
