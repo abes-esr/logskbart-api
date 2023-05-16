@@ -24,7 +24,7 @@ public class KbartListener {
     private KbartService service;
 
     @KafkaListener(topics = {"kbart"}, groupId = "lignesKbart", containerFactory = "kafkaKbartListenerContainerFactory")
-    public void listenInfoBacon2Kafka(List<ConsumerRecord<String, String>> lignesKbart) {
+    public void listenKbartFromKafka(List<ConsumerRecord<String, String>> lignesKbart) {
         PackageKbartDto packageKbartDto = new PackageKbartDto();
         packageKbartDto.setPackageName(lignesKbart.get(0).key());
         //chargement des records issus de kafka dans une liste de DTO
