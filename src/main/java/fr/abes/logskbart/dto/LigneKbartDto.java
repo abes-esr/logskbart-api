@@ -89,9 +89,6 @@ public class LigneKbartDto {
     @CsvBindByName(column = "bestPpn")
     @CsvBindByPosition(position = 25)
     private String bestPpn;
-    @CsvBindByName(column = "errorType")
-    @CsvBindByPosition(position = 26)
-    private String errorType;
 
     @Override
     public int hashCode() {
@@ -105,11 +102,4 @@ public class LigneKbartDto {
                 (this.print_identifier.isEmpty() ? "" : " / print_identifier : " + this.print_identifier);
     }
 
-    public String getAuthor() {
-        return (!this.first_author.isEmpty()) ? this.first_author : this.first_editor;
-    }
-
-    public boolean isBestPpnEmpty() {
-        return this.bestPpn == null || this.bestPpn.isEmpty();
-    }
 }

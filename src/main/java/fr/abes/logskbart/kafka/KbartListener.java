@@ -11,7 +11,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -37,7 +36,6 @@ public class KbartListener {
             }
             packageKbartDto.addLigneKbart(kbartDto);
         }
-
         //traitement de la liste de dto à traiter en fonction
         service.chargerKbart(packageKbartDto);
     }
