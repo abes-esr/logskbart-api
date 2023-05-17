@@ -17,7 +17,7 @@ public class KbartService {
     }
 
     public void chargerKbart(PackageKbartDto packageKbart) {
-        KbartLoader loader = factory.getLoader(LoaderType.valueOf(env.getProperty("loaderType")));
+        KbartLoader loader = factory.getLoader(LoaderType.valueOf(env.getProperty("LOADERTYPE")));
         loader.chargerPackageKbart(packageKbart);
     }
 }
