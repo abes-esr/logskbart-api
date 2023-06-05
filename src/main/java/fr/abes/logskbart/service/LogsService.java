@@ -1,12 +1,10 @@
 package fr.abes.logskbart.service;
 
-import fr.abes.logskbart.entity.LogKbart;
-import fr.abes.logskbart.repository.LogKbartRepository;
+import fr.abes.logskbart.entity.logs.LogKbart;
+import fr.abes.logskbart.repository.logs.LogKbartRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;

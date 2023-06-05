@@ -2,7 +2,7 @@ package fr.abes.logskbart.utils;
 
 import fr.abes.logskbart.dto.Kbart2KafkaDto;
 import fr.abes.logskbart.dto.LigneLogDto;
-import fr.abes.logskbart.entity.LogKbart;
+import fr.abes.logskbart.entity.logs.LogKbart;
 import org.modelmapper.Converter;
 import org.modelmapper.spi.MappingContext;
 import org.springframework.context.annotation.Bean;
