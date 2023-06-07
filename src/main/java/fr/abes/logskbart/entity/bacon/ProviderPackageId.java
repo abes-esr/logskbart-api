@@ -20,8 +20,7 @@ public class ProviderPackageId implements Serializable {
     private String packageName;
     @Column(name = "DATE_P")
     private Date dateP;
-    @ManyToOne(targetEntity = Provider.class, optional = false)
-    @JoinColumn(name = "PROVIDER_IDT_PROVIDER", referencedColumnName = "IDT_PROVIDER")
+    @Column(name = "PROVIDER_IDT_PROVIDER")
     private Integer providerIdtProvider;
 
     public ProviderPackageId(String packageName, Date datePackage, Integer idtProvider) {

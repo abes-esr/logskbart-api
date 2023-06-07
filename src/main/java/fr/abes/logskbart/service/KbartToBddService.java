@@ -46,12 +46,12 @@ public class KbartToBddService implements KbartLoader {
             ProviderPackageId providerPackageId = new ProviderPackageId(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), provider.getIdtProvider());
             Optional<ProviderPackage> providerPackage = providerPackageRepository.findByProviderPackageId(providerPackageId);
             //pas d'info de package, on le crée
-            return providerPackage.orElseGet(() -> providerPackageRepository.save(new ProviderPackage(providerPackageId)));
+            return providerPackage.orElseGet(() -> providerPackageRepository.save(new ProviderPackage(providerPackageId, 'N')));
         } else {
             //pas de provider, ni de package, on les crée tous les deux
             Provider newProvider = new Provider(packageKbartDto.getProvider());
             Provider savedProvider = providerRepository.save(newProvider);
-            ProviderPackage providerPackage = new ProviderPackage(new ProviderPackageId(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), savedProvider.getIdtProvider()));
+            ProviderPackage providerPackage = new ProviderPackage(new ProviderPackageId(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), savedProvider.getIdtProvider()), 'N');
             return providerPackageRepository.save(providerPackage);
         }
     }

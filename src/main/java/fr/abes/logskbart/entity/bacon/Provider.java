@@ -27,8 +27,7 @@ public class Provider implements Serializable {
     private String mailContact;
     @Column(name = "DISPLAY_NAME")
     private String displayName;
-    @OneToMany(targetEntity = ProviderPackage.class, fetch = FetchType.EAGER)
-    private Set<ProviderPackage> providerPackages;
+
 
     public Provider(String provider) {
         this.provider = provider;
@@ -36,7 +35,5 @@ public class Provider implements Serializable {
         this.displayName = provider;
     }
 
-    public void addProviderPackage(ProviderPackage providerPackage) {
-        this.providerPackages.add(providerPackage);
-    }
+
 }

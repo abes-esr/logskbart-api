@@ -1,18 +1,22 @@
 package fr.abes.logskbart.configuration;
 
 import lombok.NoArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 
 @Configuration
-@EnableJpaRepositories(entityManagerFactoryRef = "baconEntityManager", basePackages = "fr.abes.logskbart.repository.bacon")
+@EnableJpaRepositories(entityManagerFactoryRef = "baconEntityManager", transactionManagerRef = "baconTransactionManager", basePackages = "fr.abes.logskbart.repository.bacon")
 @NoArgsConstructor
 @BaconDbConfiguration
 public class BaconDbConfig extends AbstractConfig {
@@ -41,4 +45,13 @@ public class BaconDbConfig extends AbstractConfig {
         configHibernate(em, platform, showsql, dialect, ddlAuto, generateDdl, initMode);
         return em;
     }
+
+    @Primary
+    @Bean
+    public PlatformTransactionManager baconTransactionManager(@Qualifier("baconEntityManager") LocalContainerEntityManagerFactoryBean entityManagerFactory) {
+        final JpaTransactionManager transactionManager = new JpaTransactionManager();
+        transactionManager.setEntityManagerFactory(entityManagerFactory.getObject());
+        return transactionManager;
+    }
+
 }
