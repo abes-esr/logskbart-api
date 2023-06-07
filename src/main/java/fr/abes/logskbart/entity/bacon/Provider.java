@@ -1,26 +1,24 @@
 package fr.abes.logskbart.entity.bacon;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
+import java.util.Set;
 
 @Entity
 @Table(name = "PROVIDER")
 @Getter
 @Setter
+@NoArgsConstructor
 public class Provider implements Serializable {
     @Id
     @Column(name = "IDT_PROVIDER")
     private Integer idtProvider;
     @Column(name = "PROVIDER")
     private String provider;
-    @Column(name = "NAME")
-    private String name;
     @Column(name = "NOM_CONTACT")
     private String nomContact;
     @Column(name = "PRENOM_CONTACT")
@@ -29,4 +27,16 @@ public class Provider implements Serializable {
     private String mailContact;
     @Column(name = "DISPLAY_NAME")
     private String displayName;
+    @OneToMany(targetEntity = ProviderPackage.class, fetch = FetchType.EAGER)
+    private Set<ProviderPackage> providerPackages;
+
+    public Provider(String provider) {
+        this.provider = provider;
+        //on ne connait pas le display name à l'avance, on l'initialise au provider pour éviter une erreur not null dans la table
+        this.displayName = provider;
+    }
+
+    public void addProviderPackage(ProviderPackage providerPackage) {
+        this.providerPackages.add(providerPackage);
+    }
 }

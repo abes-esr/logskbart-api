@@ -17,7 +17,7 @@ public class LogsMapper {
     }
 
     /**
-     * Convertion d'un modèle PresenceZoneWebDto en modèle ComplexRule
+     * Convertion d'une Dto InfoBaconDto en modèle LogKbart
      */
     @Bean
     public void converterInfoBaconDtoToLogKbart() {

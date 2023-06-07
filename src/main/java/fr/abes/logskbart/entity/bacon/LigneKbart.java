@@ -1,12 +1,15 @@
 package fr.abes.logskbart.entity.bacon;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.Date;
 
 @Entity
 @Table(name = "LIGNE_KBART_CONVERGENCE")
+@Setter @Getter
 public class LigneKbart implements Serializable {
     @Id
     @Column(name = "IDT_LIGNE_KBART")
@@ -62,7 +65,12 @@ public class LigneKbart implements Serializable {
     @Column(name = "ACCESS_TYPE")
     private String accessType;
     @ManyToOne(targetEntity = ProviderPackage.class, cascade = CascadeType.REMOVE, optional = false)
-    private ProviderPackageId providerPackageId;
+    @JoinColumns({
+        @JoinColumn(name = "PROVIDER_PACKAGE_PACKAGE", referencedColumnName = "PACKAGE"),
+        @JoinColumn(name = "PROVIDER_PACKAGE_DATEP", referencedColumnName = "DATE_P"),
+        @JoinColumn(name = "PROVIDER_PACKAGE_IDT_PROVIDER", referencedColumnName = "PROVIDER_IDT_PROVIDER"
+    )})
+    private ProviderPackage providerPackage;
     @Column(name = "BEST_PPN")
     private String bestPpn;
 }
