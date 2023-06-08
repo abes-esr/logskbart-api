@@ -12,6 +12,8 @@ import java.util.Date;
 @Setter @Getter
 public class LigneKbart implements Serializable {
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq-ligne-kbart")
+    @SequenceGenerator(name = "seq-ligne-kbart", sequenceName = "LIGNE_KBART_SEQ", allocationSize = 1)
     @Column(name = "IDT_LIGNE_KBART")
     private Integer id;
     @Column(name = "PUBLICATION_TITLE")
@@ -50,7 +52,7 @@ public class LigneKbart implements Serializable {
     private String publicationType;
     @Column(name = "DATE_MONOGRAPH_PUBLISHED_PRINT")
     private Date dateMonographPublishedPrint;
-    @Column(name = "DATE_MONOGRAPH_PUBLISHED_ONLINE")
+    @Column(name = "DATE_MONOGRAPH_PUBLISHED_ONLIN")
     private Date dateMonographPublishedOnline;
     @Column(name = "MONOGRAPH_VOLUME")
     private String monographVolume;
@@ -67,7 +69,7 @@ public class LigneKbart implements Serializable {
     @ManyToOne(targetEntity = ProviderPackage.class, cascade = CascadeType.REMOVE, optional = false)
     @JoinColumns({
         @JoinColumn(name = "PROVIDER_PACKAGE_PACKAGE", referencedColumnName = "PACKAGE"),
-        @JoinColumn(name = "PROVIDER_PACKAGE_DATEP", referencedColumnName = "DATE_P"),
+        @JoinColumn(name = "PROVIDER_PACKAGE_DATE_P", referencedColumnName = "DATE_P"),
         @JoinColumn(name = "PROVIDER_PACKAGE_IDT_PROVIDER", referencedColumnName = "PROVIDER_IDT_PROVIDER"
     )})
     private ProviderPackage providerPackage;

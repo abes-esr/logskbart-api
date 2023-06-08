@@ -20,4 +20,8 @@ public class PackageKbartDto {
     public void addLigneKbart(LigneKbartDto ligne) {
         this.ligneKbartDtos.add(ligne);
     }
+
+    public void addLignesKbart(List<LigneKbartDto> lignes) {
+        this.ligneKbartDtos.addAll(lignes);
+    }
 }

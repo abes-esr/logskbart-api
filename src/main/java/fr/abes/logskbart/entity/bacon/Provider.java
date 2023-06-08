@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.io.Serializable;
-import java.util.Set;
 
 @Entity
 @Table(name = "PROVIDER")
@@ -15,6 +14,8 @@ import java.util.Set;
 @NoArgsConstructor
 public class Provider implements Serializable {
     @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq-provider")
+    @SequenceGenerator(name = "seq-provider", sequenceName = "PROVIDER_SEQ", allocationSize = 1)
     @Column(name = "IDT_PROVIDER")
     private Integer idtProvider;
     @Column(name = "PROVIDER")

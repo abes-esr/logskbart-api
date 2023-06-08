@@ -1,9 +1,7 @@
 package fr.abes.logskbart.utils;
 
-import fr.abes.logskbart.dto.Kbart2KafkaDto;
 import fr.abes.logskbart.dto.LigneKbartDto;
 import fr.abes.logskbart.entity.bacon.LigneKbart;
-import fr.abes.logskbart.entity.logs.LogKbart;
 import org.modelmapper.Converter;
 import org.modelmapper.spi.MappingContext;
 import org.springframework.context.annotation.Bean;
@@ -31,31 +29,35 @@ public class LigneKbartMapper {
                 LigneKbartDto source = context.getSource();
                 LigneKbart target = new LigneKbart();
                 try {
-                    target.setPublicationTitle(source.getPublication_title());
-                    target.setPrintIdentifier(source.getPrint_identifier());
-                    target.setOnlineIdentifer(source.getOnline_identifier());
-                    target.setDateFirstIssueOnline(source.getDate_first_issue_online() != null ? format.parse(source.getDate_first_issue_online()) : null);
-                    target.setNumFirstVolOnline(source.getNum_first_vol_online() != null ? source.getNum_first_vol_online().toString() : null);
-                    target.setNumFirstIssueOnline(source.getNum_first_issue_online() != null ? source.getNum_first_issue_online().toString() : null);
-                    target.setDateLastIssueOnline(source.getDate_last_issue_online() != null ? format.parse(source.getDate_last_issue_online()) : null);
-                    target.setNumLastVolOnline(source.getNum_last_vol_online() != null ? source.getNum_last_vol_online().toString() : null);
-                    target.setNumlastIssueOnline(source.getNum_last_issue_online() != null ? source.getNum_last_issue_online().toString() : null);
-                    target.setTitleUrl(source.getTitle_url());
-                    target.setFirstAuthor(source.getFirst_author());
-                    target.setTitleId(source.getTitle_id());
-                    target.setEmbargoInfo(source.getEmbargo_info());
-                    target.setCoverageDepth(source.getCoverage_depth());
+                    target.setPublicationTitle(source.getPublicationTitle());
+                    target.setPrintIdentifier(source.getPrintIdentifier());
+                    target.setOnlineIdentifer(source.getOnlineIdentifier());
+                    if (source.getDateFirstIssueOnline() != null && !source.getDateFirstIssueOnline().isBlank())
+                        target.setDateFirstIssueOnline(format.parse(source.getDateFirstIssueOnline()));
+                    target.setNumFirstVolOnline(source.getNumFirstVolOnline() != null ? source.getNumFirstVolOnline().toString() : null);
+                    target.setNumFirstIssueOnline(source.getNumFirstIssueOnline() != null ? source.getNumFirstIssueOnline().toString() : null);
+                    if (source.getDateLastIssueOnline() != null && !source.getDateLastIssueOnline().isBlank())
+                        target.setDateLastIssueOnline(format.parse(source.getDateLastIssueOnline()));
+                    target.setNumLastVolOnline(source.getNumLastVolOnline() != null ? source.getNumLastVolOnline().toString() : null);
+                    target.setNumlastIssueOnline(source.getNumLastIssueOnline() != null ? source.getNumLastIssueOnline().toString() : null);
+                    target.setTitleUrl(source.getTitleUrl());
+                    target.setFirstAuthor(source.getFirstAuthor());
+                    target.setTitleId(source.getTitleId());
+                    target.setEmbargoInfo(source.getEmbargoInfo());
+                    target.setCoverageDepth(source.getCoverageDepth());
                     target.setNotes(source.getNotes());
-                    target.setPublisherName(source.getPublisher_name());
-                    target.setPublicationType(source.getPublication_type());
-                    target.setDateMonographPublishedPrint(source.getDate_monograph_published_print() != null ? format.parse(source.getDate_monograph_published_print()) : null);
-                    target.setDateMonographPublishedOnline(source.getDate_monograph_published_online() != null ? format.parse(source.getDate_monograph_published_online()) : null);
-                    target.setMonographVolume(source.getMonograph_volume() != null ? source.getMonograph_volume().toString() : null);
-                    target.setMonographEdition(source.getMonograph_edition());
-                    target.setFirstEditor(source.getFirst_editor());
-                    target.setParentPublicationTitleId(source.getParent_publication_title_id());
-                    target.setPrecedeingPublicationTitleId(source.getPreceding_publication_title_id());
-                    target.setAccessType(source.getAccess_type());
+                    target.setPublisherName(source.getPublisherName());
+                    target.setPublicationType(source.getPublicationType());
+                    if (source.getDateMonographPublishedPrint() != null && !source.getDateMonographPublishedPrint().isBlank())
+                        target.setDateMonographPublishedPrint(format.parse(source.getDateMonographPublishedPrint()));
+                    if (source.getDateMonographPublishedOnline() != null && !source.getDateMonographPublishedOnline().isBlank())
+                        target.setDateMonographPublishedOnline(format.parse(source.getDateMonographPublishedOnline()));
+                    target.setMonographVolume(source.getMonographVolume() != null ? source.getMonographVolume().toString() : null);
+                    target.setMonographEdition(source.getMonographEdition());
+                    target.setFirstEditor(source.getFirstEditor());
+                    target.setParentPublicationTitleId(source.getParentPublicationTitleId());
+                    target.setPrecedeingPublicationTitleId(source.getPrecedingPublicationTitleId());
+                    target.setAccessType(source.getAccessType());
                     target.setBestPpn(source.getBestPpn());
                 } catch (ParseException e) {
                     throw new RuntimeException(e);
