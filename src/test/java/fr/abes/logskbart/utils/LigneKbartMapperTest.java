@@ -22,15 +22,15 @@ public class LigneKbartMapperTest {
     @Test
     @DisplayName("test Mapper ligneKbartDto to Entity : filled dates")
     void testMapperLigneKbart1() {
-        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yy");
+        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
         LigneKbartDto ligne = new LigneKbartDto();
         ligne.setPublicationTitle("testTitre");
         ligne.setPrintIdentifier("978-123456789");
         ligne.setOnlineIdentifier("1234-5678");
-        ligne.setDateFirstIssueOnline("01/01/23");
+        ligne.setDateFirstIssueOnline("01/01/2023");
         ligne.setNumFirstVolOnline(1);
         ligne.setNumFirstIssueOnline(2);
-        ligne.setDateLastIssueOnline("02/02/23");
+        ligne.setDateLastIssueOnline("02/02/2023");
         ligne.setNumLastVolOnline(3);
         ligne.setNumLastIssueOnline(4);
         ligne.setTitleUrl("testUrl");
@@ -41,8 +41,8 @@ public class LigneKbartMapperTest {
         ligne.setNotes("notes");
         ligne.setPublisherName("testPublisher");
         ligne.setPublicationType("testType");
-        ligne.setDateMonographPublishedPrint("03/03/23");
-        ligne.setDateMonographPublishedOnline("04/04/23");
+        ligne.setDateMonographPublishedPrint("03/03/2023");
+        ligne.setDateMonographPublishedOnline("04/04/2023");
         ligne.setMonographVolume(5);
         ligne.setMonographEdition("testEdition");
         ligne.setFirstEditor("testEditor");
@@ -56,10 +56,10 @@ public class LigneKbartMapperTest {
         Assertions.assertEquals("testTitre", ligneKbart.getPublicationTitle());
         Assertions.assertEquals("978-123456789", ligneKbart.getPrintIdentifier());
         Assertions.assertEquals("1234-5678", ligneKbart.getOnlineIdentifer());
-        Assertions.assertEquals("01/01/23", format.format(ligneKbart.getDateFirstIssueOnline()));
+        Assertions.assertEquals("01/01/2023", format.format(ligneKbart.getDateFirstIssueOnline()));
         Assertions.assertEquals("1", ligneKbart.getNumFirstVolOnline());
         Assertions.assertEquals("2", ligneKbart.getNumFirstIssueOnline());
-        Assertions.assertEquals("02/02/23", format.format(ligneKbart.getDateLastIssueOnline()));
+        Assertions.assertEquals("02/02/2023", format.format(ligneKbart.getDateLastIssueOnline()));
         Assertions.assertEquals("3", ligneKbart.getNumLastVolOnline());
         Assertions.assertEquals("4", ligneKbart.getNumlastIssueOnline());
         Assertions.assertEquals("testUrl", ligneKbart.getTitleUrl());
@@ -70,8 +70,8 @@ public class LigneKbartMapperTest {
         Assertions.assertEquals("notes", ligneKbart.getNotes());
         Assertions.assertEquals("testPublisher", ligneKbart.getPublisherName());
         Assertions.assertEquals("testType", ligneKbart.getPublicationType());
-        Assertions.assertEquals("03/03/23", format.format(ligneKbart.getDateMonographPublishedPrint()));
-        Assertions.assertEquals("04/04/23", format.format(ligneKbart.getDateMonographPublishedOnline()));
+        Assertions.assertEquals("03/03/2023", format.format(ligneKbart.getDateMonographPublishedPrint()));
+        Assertions.assertEquals("04/04/2023", format.format(ligneKbart.getDateMonographPublishedOnline()));
         Assertions.assertEquals("5", ligneKbart.getMonographVolume());
         Assertions.assertEquals("testEdition", ligneKbart.getMonographEdition());
         Assertions.assertEquals("testParentPub", ligneKbart.getParentPublicationTitleId());

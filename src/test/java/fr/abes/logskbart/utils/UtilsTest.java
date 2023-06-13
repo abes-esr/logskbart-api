@@ -32,8 +32,8 @@ class UtilsTest {
     @Test
     void extractDate() throws IllegalDateException {
         String filename = "RSC_GLOBAL_ALLEBOOKS_2021-01-28.tsv";
-        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yy");
-        Assertions.assertEquals("28/01/21", format.format(Utils.extractDate(filename)));
+        SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
+        Assertions.assertEquals("28/01/2021", format.format(Utils.extractDate(filename)));
 
         String filename2 = "";
         Assertions.assertThrows(IllegalDateException.class, () -> Utils.extractDate(filename2));

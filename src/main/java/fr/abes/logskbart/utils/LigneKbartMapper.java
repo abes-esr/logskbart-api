@@ -25,7 +25,7 @@ public class LigneKbartMapper {
     public void converterLigneKbartDtoToLigneKbart() {
         Converter<LigneKbartDto, LigneKbart> myConverter = new Converter<LigneKbartDto, LigneKbart>() {
             public LigneKbart convert(MappingContext<LigneKbartDto, LigneKbart> context) {
-                SimpleDateFormat format = new SimpleDateFormat("dd/MM/yy");
+                SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy");
                 LigneKbartDto source = context.getSource();
                 LigneKbart target = new LigneKbart();
                 try {
