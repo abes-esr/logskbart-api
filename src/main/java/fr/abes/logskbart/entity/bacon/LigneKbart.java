@@ -12,8 +12,6 @@ import java.util.Date;
 @Setter @Getter
 public class LigneKbart implements Serializable {
     @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "seq-ligne-kbart")
-    @SequenceGenerator(name = "seq-ligne-kbart", sequenceName = "LIGNE_KBART_SEQ", allocationSize = 1)
     @Column(name = "IDT_LIGNE_KBART")
     private Integer id;
     @Column(name = "PUBLICATION_TITLE")
