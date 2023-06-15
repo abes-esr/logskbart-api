@@ -2,7 +2,6 @@ package fr.abes.logskbart.controller;
 
 import fr.abes.logskbart.dto.LigneLogDto;
 import fr.abes.logskbart.dto.LogDto;
-import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -10,7 +9,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jdk.jshell.execution.Util;
 import org.springframework.web.bind.annotation.*;
 
 import java.text.ParseException;

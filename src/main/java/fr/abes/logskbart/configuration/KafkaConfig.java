@@ -13,6 +13,7 @@ import org.springframework.kafka.listener.ContainerProperties;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Configuration
 @EnableKafka
@@ -20,8 +21,9 @@ public class KafkaConfig {
     @Value("${spring.kafka.consumer.bootstrap-servers}")
     private String bootstrapAddress;
 
-    @Value("${spring.kafka.consumer.max-poll-records}")
-    private Integer maxPollRecords;
+   /* @Value("${spring.kafka.consumer.max-poll-records}")
+    private Integer maxPollRecords;*/
+
     @Bean
     public ConsumerFactory<String, String> consumerLogsFactory() {
         Map<String, Object> props = new HashMap<>();
@@ -46,9 +48,10 @@ public class KafkaConfig {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, "lignesKbart");
+        props.put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG,("SchedulerCoordinator"+ UUID.randomUUID()));
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords);
+       // props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, maxPollRecords);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
@@ -58,9 +61,9 @@ public class KafkaConfig {
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerKbartFactory());
-        factory.setBatchListener(true);
+        /*factory.setBatchListener(true);
         factory.setConcurrency(1);
-        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.BATCH);*/
         return factory;
     }
 }
