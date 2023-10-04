@@ -92,6 +92,9 @@ public class LogsListener {
                 LocalDateTime time = LocalDateTime.now();
                 DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss", Locale.FRANCE);
                 String date = format.format(time);
+
+                String tempLog = "tempLog/";
+                Files.createDirectory(Paths.get(tempLog));
                 Path target = Path.of("tempLog\\" + date + "_" + source);
 
                 Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
