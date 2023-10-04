@@ -19,6 +19,9 @@ import org.springframework.stereotype.Service;
 @Service
 @Slf4j
 public class KbartListener {
+
+    //  TODO Supprimer ce listener
+
     @Autowired
     private ObjectMapper mapper;
 

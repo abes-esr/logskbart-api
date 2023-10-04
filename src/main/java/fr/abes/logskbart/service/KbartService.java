@@ -7,6 +7,9 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class KbartService {
+
+    // TODO Supprimer cette classe
+
     private final KbartLoaderFactory factory;
 
     private final Environment env;

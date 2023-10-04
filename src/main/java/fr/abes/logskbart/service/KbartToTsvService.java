@@ -20,6 +20,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class KbartToTsvService implements KbartLoader {
+
+    // TODO supprimer cette classe
+
     @Value("${path.tsvFile}")
     private String pathToFichier;
 
