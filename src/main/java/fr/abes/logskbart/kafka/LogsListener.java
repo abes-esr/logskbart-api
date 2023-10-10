@@ -79,7 +79,7 @@ public class LogsListener {
             //  Inscrit l'entity en BDD
             repository.save(entity);
 
-        } else if (message.value().contains("OK")) {    //  Si la ligne sur le topic bestppn.endoftraitment contient OK
+        } else if (message.value().equals("OK")) {    //  Si la ligne sur le topic bestppn.endoftraitment contient OK
 
             //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .err)
             Path source = null;
@@ -91,8 +91,7 @@ public class LogsListener {
             }
 
             //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
-            assert source != null;
-            if (Files.exists(source)) {
+            if (source != null && Files.exists(source)) {
                 LocalDateTime time = LocalDateTime.now();
                 DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss", Locale.FRANCE);
                 String date = format.format(time);
