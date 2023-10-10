@@ -53,7 +53,7 @@ public class LogsListener {
             if (entity.getLevel().toString().equals("ERROR")) {
                 String nbrLine = message.key().substring(message.key().indexOf(".tsv")+4).replaceAll("\\[line\\s:\\s", "").replaceAll("]", "");
                 String fileName = message.key().replaceAll(".tsv\\[line\\s:\\s\\d+\\]", ".err");
-                String line = "LINE : " + nbrLine + " - MESSAGE : " + dto.getMessage();
+                String line = nbrLine + "\t" + dto.getMessage();
 
                 //  Vérifie qu'un fichier portant le nom du kbart en cours existe
                 Path of = Path.of(fileName);
@@ -64,6 +64,9 @@ public class LogsListener {
                     try {
                         //  Créer le fichier et inscrit la ligne dedans
                         Files.createFile(of);
+                        //  Créer la ligne d'en-tête
+                        Files.write(of, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                        //  Inscrit les informations sur la ligne
                         Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                         log.info("Fichier temporaire créé.");
                     } catch (SecurityException | IOException e) {
