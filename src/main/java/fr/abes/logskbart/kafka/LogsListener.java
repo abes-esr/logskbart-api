@@ -42,7 +42,7 @@ public class LogsListener {
     @KafkaListener(topics = {"errorkbart2kafka", "bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
 
-        if (!message.value().equals("OK")) {
+        if (message.topic().equals("errorkbart2kafka")) {
             Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
             LogKbart entity = logsMapper.map(dto, LogKbart.class);
             Timestamp timestamp = new Timestamp(message.timestamp());
@@ -79,7 +79,7 @@ public class LogsListener {
             //  Inscrit l'entity en BDD
             repository.save(entity);
 
-        } else if (message.value().equals("OK")) {    //  Si la ligne sur le topic bestppn.endoftraitment contient OK
+        } else {    //  Si la ligne sur le topic bestppn.endoftraitment contient OK
 
             //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .err)
             Path source = null;
