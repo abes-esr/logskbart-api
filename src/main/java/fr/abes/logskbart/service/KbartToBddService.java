@@ -4,7 +4,6 @@ import fr.abes.logskbart.dto.PackageKbartDto;
 import fr.abes.logskbart.entity.bacon.LigneKbart;
 import fr.abes.logskbart.entity.bacon.Provider;
 import fr.abes.logskbart.entity.bacon.ProviderPackage;
-import fr.abes.logskbart.entity.bacon.ProviderPackageId;
 import fr.abes.logskbart.repository.bacon.LigneKbartRepository;
 import fr.abes.logskbart.repository.bacon.ProviderPackageRepository;
 import fr.abes.logskbart.repository.bacon.ProviderRepository;
@@ -43,15 +42,14 @@ public class KbartToBddService implements KbartLoader {
         Optional<Provider> providerOpt = providerRepository.findByProvider(packageKbartDto.getProvider());
         if (providerOpt.isPresent()) {
             Provider provider = providerOpt.get();
-            ProviderPackageId providerPackageId = new ProviderPackageId(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), provider.getIdtProvider());
-            Optional<ProviderPackage> providerPackage = providerPackageRepository.findByProviderPackageId(providerPackageId);
+            Optional<ProviderPackage> providerPackage = providerPackageRepository.findByPackageNameAndDatePAndProviderIdtProvider(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), provider.getIdtProvider());
             //pas d'info de package, on le crée
-            return providerPackage.orElseGet(() -> providerPackageRepository.save(new ProviderPackage(providerPackageId, 'N')));
+            return providerPackage.orElseGet(() -> providerPackageRepository.save(new ProviderPackage(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), provider.getIdtProvider(), 'N')));
         } else {
             //pas de provider, ni de package, on les crée tous les deux
             Provider newProvider = new Provider(packageKbartDto.getProvider());
             Provider savedProvider = providerRepository.save(newProvider);
-            ProviderPackage providerPackage = new ProviderPackage(new ProviderPackageId(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), savedProvider.getIdtProvider()), 'N');
+            ProviderPackage providerPackage = new ProviderPackage(packageKbartDto.getPackageName(), packageKbartDto.getDatePackage(), savedProvider.getIdtProvider(), 'N');
             return providerPackageRepository.save(providerPackage);
         }
     }
