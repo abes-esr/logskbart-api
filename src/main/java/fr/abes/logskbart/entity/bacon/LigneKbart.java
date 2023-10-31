@@ -8,7 +8,7 @@ import java.io.Serializable;
 import java.util.Date;
 
 @Entity
-@Table(name = "LIGNE_KBART_CONVERGENCE")
+@Table(name = "LIGNE_KBART")
 @Setter @Getter
 public class LigneKbart implements Serializable {
     @Id
@@ -65,13 +65,15 @@ public class LigneKbart implements Serializable {
     private String precedeingPublicationTitleId;
     @Column(name = "ACCESS_TYPE")
     private String accessType;
-    @ManyToOne(targetEntity = ProviderPackage.class, cascade = CascadeType.REMOVE, optional = false)
-    @JoinColumns({
-        @JoinColumn(name = "PROVIDER_PACKAGE_PACKAGE", referencedColumnName = "PACKAGE"),
-        @JoinColumn(name = "PROVIDER_PACKAGE_DATE_P", referencedColumnName = "DATE_P"),
-        @JoinColumn(name = "PROVIDER_PACKAGE_IDT_PROVIDER", referencedColumnName = "PROVIDER_IDT_PROVIDER"
-    )})
-    private ProviderPackage providerPackage;
+    @Column(name = "PACKAGE")
+    private String packageName;
+    @Column(name = "DATE_P")
+    private Date dateP;
+    @Column(name = "PROVIDER_IDT_PROVIDER")
+    private Integer providerIdtProvider;
     @Column(name = "BEST_PPN")
     private String bestPpn;
+    @ManyToOne(targetEntity = ProviderPackage.class, cascade = CascadeType.REMOVE, optional = false)
+    @JoinColumn(name = "ID_PROVIDER_PACKAGE", referencedColumnName = "ID_PROVIDER_PACKAGE")
+    private ProviderPackage providerPackage;
 }
