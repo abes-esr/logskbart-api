@@ -39,10 +39,10 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"errorkbart2kafka", "bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"errorkbart2kafka", "infokbart2kafka", "bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
 
-        if (message.topic().equals("errorkbart2kafka")) {
+        if (message.topic().equals("errorkbart2kafka") || message.topic().equals("infokbart2kafka")) {
             Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
             LogKbart entity = logsMapper.map(dto, LogKbart.class);
             Timestamp timestamp = new Timestamp(message.timestamp());
