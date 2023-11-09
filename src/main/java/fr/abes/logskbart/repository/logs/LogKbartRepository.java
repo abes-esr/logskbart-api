@@ -1,7 +1,7 @@
 package fr.abes.logskbart.repository.logs;
 
 import fr.abes.logskbart.configuration.LogsBdConfiguration;
-import fr.abes.logskbart.entity.logs.LogKbart;
+import fr.abes.logskbart.entity.LogKbart;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
