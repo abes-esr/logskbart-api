@@ -2,7 +2,7 @@ package fr.abes.logskbart.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.Kbart2KafkaDto;
-import fr.abes.logskbart.entity.logs.LogKbart;
+import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.repository.logs.LogKbartRepository;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +52,7 @@ public class LogsListener {
             //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
             if (entity.getLevel().toString().equals("ERROR")) {
                 String nbrLine = message.key().substring(message.key().indexOf(".tsv")+4).replaceAll("\\[line\\s:\\s", "").replaceAll("]", "");
-                String fileName = message.key().replaceAll(".tsv\\[line\\s:\\s\\d+\\]", ".err");
+                String fileName = message.key().replaceAll(".tsv\\[line\\s:\\s\\d+\\]", ".bad");
                 String line = nbrLine + "\t" + dto.getMessage();
 
                 //  Vérifie qu'un fichier portant le nom du kbart en cours existe
