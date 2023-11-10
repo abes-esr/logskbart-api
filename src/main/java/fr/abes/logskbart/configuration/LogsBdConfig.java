@@ -16,7 +16,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import javax.sql.DataSource;
 
 @Configuration
-@EnableJpaRepositories(entityManagerFactoryRef = "logsEntityManager", transactionManagerRef = "logsTransactionManager", basePackages = "fr.abes.logskbart.repository.logs")
+@EnableJpaRepositories(entityManagerFactoryRef = "logsEntityManager", transactionManagerRef = "logsTransactionManager", basePackages = "fr.abes.logskbart.repository")
 @NoArgsConstructor
 @LogsBdConfiguration
 public class LogsBdConfig extends AbstractConfig {
@@ -41,7 +41,7 @@ public class LogsBdConfig extends AbstractConfig {
     public LocalContainerEntityManagerFactoryBean logsEntityManager() {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(logsDataSource());
-        em.setPackagesToScan(new String[]{"fr.abes.logskbart.entity.logs"});
+        em.setPackagesToScan(new String[]{"fr.abes.logskbart.entity"});
         configHibernate(em, platform, showsql, dialect, ddlAuto, generateDdl, initMode);
         return em;
     }
