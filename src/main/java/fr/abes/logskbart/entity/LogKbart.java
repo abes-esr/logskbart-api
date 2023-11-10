@@ -1,4 +1,4 @@
-package fr.abes.logskbart.entity.logs;
+package fr.abes.logskbart.entity;
 
 import fr.abes.logskbart.utils.Level;
 import jakarta.persistence.*;

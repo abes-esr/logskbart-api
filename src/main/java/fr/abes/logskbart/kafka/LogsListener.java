@@ -2,7 +2,7 @@ package fr.abes.logskbart.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.Kbart2KafkaDto;
-import fr.abes.logskbart.entity.logs.LogKbart;
+import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.repository.logs.LogKbartRepository;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -39,10 +39,10 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"errorkbart2kafka", "bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"errorkbart2kafka", "infokbart2kafka", "bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
 
-        if (message.topic().equals("errorkbart2kafka")) {
+        if (message.topic().equals("errorkbart2kafka") || message.topic().equals("infokbart2kafka")) {
             Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
             LogKbart entity = logsMapper.map(dto, LogKbart.class);
             Timestamp timestamp = new Timestamp(message.timestamp());
@@ -52,7 +52,7 @@ public class LogsListener {
             //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
             if (entity.getLevel().toString().equals("ERROR")) {
                 String nbrLine = message.key().substring(message.key().indexOf(".tsv")+4).replaceAll("\\[line\\s:\\s", "").replaceAll("]", "");
-                String fileName = message.key().replaceAll(".tsv\\[line\\s:\\s\\d+\\]", ".err");
+                String fileName = message.key().replaceAll(".tsv\\[line\\s:\\s\\d+\\]", ".bad");
                 String line = nbrLine + "\t" + dto.getMessage();
 
                 //  Vérifie qu'un fichier portant le nom du kbart en cours existe
