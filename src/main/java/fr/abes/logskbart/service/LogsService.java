@@ -1,7 +1,7 @@
 package fr.abes.logskbart.service;
 
 import fr.abes.logskbart.entity.LogKbart;
-import fr.abes.logskbart.repository.logs.LogKbartRepository;
+import fr.abes.logskbart.repository.LogKbartRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

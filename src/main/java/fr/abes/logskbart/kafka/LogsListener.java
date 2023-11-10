@@ -3,7 +3,7 @@ package fr.abes.logskbart.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.Kbart2KafkaDto;
 import fr.abes.logskbart.entity.LogKbart;
-import fr.abes.logskbart.repository.logs.LogKbartRepository;
+import fr.abes.logskbart.repository.LogKbartRepository;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
