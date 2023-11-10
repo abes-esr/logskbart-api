@@ -1,4 +1,4 @@
-package fr.abes.logskbart.repository.logs;
+package fr.abes.logskbart.repository;
 
 import fr.abes.logskbart.configuration.LogsBdConfiguration;
 import fr.abes.logskbart.entity.LogKbart;
