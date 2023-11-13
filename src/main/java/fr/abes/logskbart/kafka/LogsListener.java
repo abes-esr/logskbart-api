@@ -85,7 +85,7 @@ public class LogsListener {
             Path source = null;
             for (Header header : message.headers().toArray()) {
                 if (header.key().equals("FileName")) {
-                    source = Path.of(new String(header.value()).replaceAll(".tsv", ".err"));
+                    source = Path.of(new String(header.value()).replaceAll(".tsv", ".bad"));
                     break;
                 }
             }
