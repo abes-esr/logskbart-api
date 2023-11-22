@@ -5,6 +5,8 @@ import fr.abes.logskbart.dto.Kbart2KafkaDto;
 import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.repository.LogKbartRepository;
 import fr.abes.logskbart.utils.UtilsMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -23,7 +25,17 @@ import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class LogsListener {
+
+    @Value("${topic.name.source.error}")
+    private String topicErrorKbart;
+
+    @Value("${topic.name.source.info}")
+    private String topicInfoKbart;
+
+    @Value("${topic.name.source.endoftraitement}")
+    private String topicEndOfTraitement;
 
     @Autowired
     private ObjectMapper mapper;
@@ -39,10 +51,10 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"errorkbart2kafka", "infokbart2kafka", "bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"${topic.name.source.error}", "${topic.name.source.info}", "${topic.name.source.endoftraitement}"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
 
-        if (message.topic().equals("errorkbart2kafka") || message.topic().equals("infokbart2kafka")) {
+        if (message.topic().equals(topicErrorKbart) || message.topic().equals(topicInfoKbart)) {
             Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
             LogKbart entity = logsMapper.map(dto, LogKbart.class);
             Timestamp timestamp = new Timestamp(message.timestamp());
@@ -79,7 +91,7 @@ public class LogsListener {
             //  Inscrit l'entity en BDD
             repository.save(entity);
 
-        } else {    //  Si la ligne sur le topic bestppn.endoftraitment contient OK
+        } else if (message.topic().equals(topicEndOfTraitement)) {    //  Si la ligne sur le topic bestppn.endoftraitment contient OK
 
             //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .err)
             Path source = null;
