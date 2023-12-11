@@ -63,7 +63,8 @@ public class LogsListener {
 
         //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
         if (entity.getLevel().toString().equals("ERROR")) {
-            String nbrLine = message.key().split("\\[line:")[1].replace("]", "");
+            String[] listMessage = message.key().split("\\[line:");
+            String nbrLine = (listMessage.length > 1) ? listMessage[1].replace("]", "") : "";
             String fileName = entity.getPackageName().replace(".tsv", ".bad");
             String line = nbrLine + "\t" + dto.getMessage();
 
