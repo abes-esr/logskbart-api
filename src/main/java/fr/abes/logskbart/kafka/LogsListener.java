@@ -90,7 +90,7 @@ public class LogsListener {
     @KafkaListener(topics = {"${topic.name.source.endoftraitement}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listener(ConsumerRecord<String, String> message) throws IOException {
 
-        //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .err)
+        //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .bad)
         Path source = null;
         for (Header header : message.headers().toArray()) {
             if (header.key().equals("FileName")) {
@@ -100,22 +100,29 @@ public class LogsListener {
         }
 
         log.info("End of traitement : " + message.value());
-        //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
-        if (source != null && Files.exists(source)) {
+
+        if( message.value().equals("OK")) {
+            //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
+            if (source != null && Files.exists(source)) {
 
 
-            //  Vérification du chemin et création si inexistant
-            String tempLog = "tempLog" + File.separator;
-            File chemin = new File(tempLog);
-            if (!chemin.isDirectory()) {
-                Files.createDirectory(Paths.get(tempLog));
+                //  Vérification du chemin et création si inexistant
+                String tempLog = "tempLog" + File.separator;
+                File chemin = new File(tempLog);
+                if (!chemin.isDirectory()) {
+                    Files.createDirectory(Paths.get(tempLog));
+                }
+                Path target = Path.of(tempLog + source);
+                Files.deleteIfExists(target);
+
+                //  Déplacement du fichier
+                Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
+                log.info("Fichier de log d'erreur transféré dans le dossier temporaire.");
             }
-            Path target = Path.of(tempLog + source);
-            Files.deleteIfExists(target);
-
-            //  Déplacement du fichier
-            Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-            log.info("Fichier de log transféré dans le dossier temporaire.");
+        } else if(message.value().equals("KO")) {
+            assert source != null;
+            Files.deleteIfExists(source);
+            log.info("Fichier de log d'erreur supprimé si existe");
         }
     }
 }
