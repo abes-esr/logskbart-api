@@ -52,50 +52,56 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"${topic.name.source.error}", "${topic.name.source.info}"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"${topic.name.source.error}", "${topic.name.source.info}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
-        log.info("Error ou Info");
         Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
-        LogKbart entity = logsMapper.map(dto, LogKbart.class);
+        LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
+
+        String[] listMessage = message.key().split(";");
+        log.info(Arrays.toString(listMessage));
         Timestamp timestamp = new Timestamp(message.timestamp());
-        entity.setTimestamp(new Date(timestamp.getTime()));
-        entity.setPackageName(message.key().split("\\[")[0]);
+        logKbart.setTimestamp(new Date(timestamp.getTime()));
+        logKbart.setPackageName(listMessage[0]);
 
-        //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
-        if (entity.getLevel().toString().equals("ERROR")) {
-            String[] listMessage = message.key().split("\\[line:");
-            String nbrLine = (listMessage.length > 1) ? listMessage[1].replace("]", "") : "";
-            String fileName = entity.getPackageName().replace(".tsv", ".bad");
-            String line = nbrLine + "\t" + dto.getMessage();
+        logKbart.log();
 
-            //  Vérifie qu'un fichier portant le nom du kbart en cours existe
-            Path of = Path.of(fileName);
-            if (Files.exists(of)) {
-                //  Inscrit la ligne dedans
-                Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-            } else if (!Files.exists(of)) {
-                try {
-                    //  Créer le fichier et inscrit la ligne dedans
-                    Files.createFile(of);
-                    //  Créer la ligne d'en-tête
-                    Files.write(of, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                    //  Inscrit les informations sur la ligne
+        if (!logKbart.getPackageName().contains("ctx:package")) {
+            //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
+            if (logKbart.getLevel().toString().equals("ERROR")) {
+                String nbrLine = (listMessage.length > 1) ? listMessage[1] : "";
+                String fileName = logKbart.getPackageName().replace(".tsv", ".bad");
+                String line = nbrLine + "\t" + dto.getMessage();
+
+
+                //  Vérifie qu'un fichier portant le nom du kbart en cours existe
+                Path of = Path.of(fileName);
+                if (Files.exists(of)) {
+                    //  Inscrit la ligne dedans
                     Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                    log.info("Fichier temporaire créé.");
-                } catch (SecurityException | IOException e) {
-                    log.error("Erreur lors de la création du fichier temporaire. " + e);
-                    throw new RuntimeException(e);
+                } else if (!Files.exists(of)) {
+                    try {
+                        //  Créer le fichier et inscrit la ligne dedans
+                        Files.createFile(of);
+                        //  Créer la ligne d'en-tête
+                        Files.write(of, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                        //  Inscrit les informations sur la ligne
+                        Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                        log.info("Fichier temporaire créé.");
+                    } catch (SecurityException | IOException e) {
+                        log.error("Erreur lors de la création du fichier temporaire. " + e);
+                        throw new RuntimeException(e);
+                    }
                 }
             }
         }
 
         //  Inscrit l'entity en BDD
-        repository.save(entity);
+        repository.save(logKbart);
     }
 
-    @KafkaListener(topics = {"bestppn.endoftraitment"}, groupId = "logskbart", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"${topic.name.source.endoftraitement}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listener(ConsumerRecord<String, String> message) throws IOException {
-        log.info("End Of Traitement");
+
         //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .err)
         Path source = null;
         for (Header header : message.headers().toArray()) {
@@ -105,20 +111,18 @@ public class LogsListener {
             }
         }
 
+        log.info("End of traitement : " + message.value());
         //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
         if (source != null && Files.exists(source)) {
 
-            LocalDateTime time = LocalDateTime.now();
-            DateTimeFormatter format = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH-mm-ss", Locale.FRANCE);
-            String date = format.format(time);
 
             //  Vérification du chemin et création si inexistant
-            String tempLog = "tempLog/";
+            String tempLog = "tempLog" + File.separator;
             File chemin = new File(tempLog);
             if (!chemin.isDirectory()) {
                 Files.createDirectory(Paths.get(tempLog));
             }
-            Path target = Path.of("tempLog\\" + date + "_" + source);
+            Path target = Path.of(tempLog + source);
 
             //  Déplacement du fichier
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);

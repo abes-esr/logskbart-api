@@ -3,6 +3,7 @@ package fr.abes.logskbart.entity;
 import fr.abes.logskbart.utils.Level;
 import jakarta.persistence.*;
 import lombok.*;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
 import java.util.Date;
@@ -12,6 +13,7 @@ import java.util.Date;
 @Getter
 @Setter
 @NoArgsConstructor
+@Slf4j
 public class LogKbart implements Serializable {
     @Id
     @Column(name = "ID")
@@ -49,5 +51,23 @@ public class LogKbart implements Serializable {
     @Column(name = "THREAD_PRIORITY")
     private Integer threadPriority;
 
+    @Override
+    public String toString() {
+        return "LogKbart{" +
+                "packageName='" + packageName + '\'' +
+                ", timestamp=" + timestamp +
+                ", thread='" + thread + '\'' +
+                ", level=" + level +
+                ", message='" + message + '\'' +
+                ", loggerFqcn='" + loggerFqcn + '\'' +
+                '}';
+    }
 
+    public void log(){
+        if(level.equals(Level.ERROR)){
+            log.error(String.valueOf(this));
+        }else {
+            log.info(String.valueOf(this));
+        }
+    }
 }
