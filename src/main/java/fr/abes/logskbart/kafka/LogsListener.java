@@ -6,7 +6,6 @@ import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.repository.LogKbartRepository;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
@@ -19,9 +18,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.sql.Date;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Arrays;
 
 @Slf4j
 @Service

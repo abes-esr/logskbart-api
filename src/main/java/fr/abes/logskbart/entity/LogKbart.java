@@ -2,7 +2,9 @@ package fr.abes.logskbart.entity;
 
 import fr.abes.logskbart.utils.Level;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.Serializable;
@@ -64,10 +66,6 @@ public class LogKbart implements Serializable {
     }
 
     public void log(){
-        if(level.equals(Level.ERROR)){
-            log.error(String.valueOf(this));
-        }else {
-            log.info(String.valueOf(this));
-        }
+        log.debug( this.level +" : " + this);
     }
 }
