@@ -28,15 +28,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class LogsListener {
 
-    @Value("${topic.name.source.error}")
-    private String topicErrorKbart;
-
-    @Value("${topic.name.source.info}")
-    private String topicInfoKbart;
-
-    @Value("${topic.name.source.endoftraitement}")
-    private String topicEndOfTraitement;
-
     @Autowired
     private ObjectMapper mapper;
 
