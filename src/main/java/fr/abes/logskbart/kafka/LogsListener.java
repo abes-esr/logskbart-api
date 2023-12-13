@@ -101,7 +101,7 @@ public class LogsListener {
 
         log.info("End of traitement : " + message.value());
 
-        if( message.value().equals("OK")) {
+        if( message.value().equals("KO")) {
             //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
             if (source != null && Files.exists(source)) {
 
@@ -119,7 +119,7 @@ public class LogsListener {
                 Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
                 log.info("Fichier de log d'erreur transféré dans le dossier temporaire.");
             }
-        } else if(message.value().equals("KO")) {
+        } else if(message.value().equals("OK")) {
             assert source != null;
             Files.deleteIfExists(source);
             log.info("Fichier de log d'erreur supprimé si existe");
