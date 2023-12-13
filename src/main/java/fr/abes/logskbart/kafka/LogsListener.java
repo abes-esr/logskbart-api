@@ -114,6 +114,7 @@ public class LogsListener {
                 Files.createDirectory(Paths.get(tempLog));
             }
             Path target = Path.of(tempLog + source);
+            Files.deleteIfExists(target);
 
             //  Déplacement du fichier
             Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
