@@ -1,38 +1,45 @@
 package fr.abes.logskbart.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import fr.abes.logskbart.dto.Kbart2KafkaDto;
+import fr.abes.logskbart.dto.LogKbartDto;
 import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.repository.LogKbartRepository;
 import fr.abes.logskbart.utils.UtilsMapper;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.Header;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.sql.Date;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class LogsListener {
 
-    @Autowired
-    private ObjectMapper mapper;
+    private final ObjectMapper mapper;
 
-    @Autowired
-    private UtilsMapper logsMapper;
+    private final UtilsMapper logsMapper;
 
-    @Autowired
-    private LogKbartRepository repository;
+    private final LogKbartRepository repository;
+
+    private final Map<String, Timestamp> lastTimeStampByFilename;
+
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogKbartRepository repository, Map<String, Timestamp> lastTimeStampByFilename) {
+        this.mapper = mapper;
+        this.logsMapper = logsMapper;
+        this.repository = repository;
+        this.lastTimeStampByFilename = lastTimeStampByFilename;
+    }
+
 
     /**
      * Ecoute les topic de log d'erreurs et de fin de traitement bestPpn et génère un fichier err pour chaque fichier kbart
@@ -42,27 +49,42 @@ public class LogsListener {
      */
     @KafkaListener(topics = {"${topic.name.source.error}", "${topic.name.source.info}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
-        Kbart2KafkaDto dto = mapper.readValue(message.value(), Kbart2KafkaDto.class);
+        LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
         String[] listMessage = message.key().split(";");
         log.info(Arrays.toString(listMessage));
-        Timestamp timestamp = new Timestamp(message.timestamp());
-        logKbart.setTimestamp(new Date(timestamp.getTime()));
+        // recuperation de l'heure a laquelle le message a ete envoye
+        Timestamp currentTimestamp = new Timestamp(message.timestamp());
+        logKbart.setTimestamp(new Date(currentTimestamp.getTime()));
         logKbart.setPackageName(listMessage[0]);
+        String nbLineOrigine = (listMessage.length > 1) ? listMessage[1] : "";
 
         logKbart.log();
 
-        if (!logKbart.getPackageName().contains("ctx:package")) {
+        // Vérifie qu'un fichier portant le nom du kbart en cours existe
+        if (!logKbart.getPackageName().contains("ctx:package") && !logKbart.getPackageName().contains("_FORCE")) {
+            Path tempPath = Path.of("tempLog");
+            if(!Files.exists(tempPath)) {
+                Files.createDirectory(tempPath);
+            }
+            Path of = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
+
             //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
             if (logKbart.getLevel().toString().equals("ERROR")) {
-                String nbrLine = (listMessage.length > 1) ? listMessage[1] : "";
-                String fileName = logKbart.getPackageName().replace(".tsv", ".bad");
-                String line = nbrLine + "\t" + dto.getMessage();
+                if (lastTimeStampByFilename.get(logKbart.getPackageName()) != null) {
+                    Timestamp LastTimestampPlusTwoMinutes = new Timestamp(lastTimeStampByFilename.get(logKbart.getPackageName()).getTime() + TimeUnit.MINUTES.toMillis(2 * 60 * 1000));
 
+                    // Si ca fait 2min qu'on a pas recu de message pour ce fichier
+                    if (currentTimestamp.after(LastTimestampPlusTwoMinutes)) {
+                        log.debug("Suppression fichier " + logKbart.getPackageName() + " si existe");
+                        Files.deleteIfExists(of);
+                    }
+                }
+                lastTimeStampByFilename.put(logKbart.getPackageName(), currentTimestamp);
 
-                //  Vérifie qu'un fichier portant le nom du kbart en cours existe
-                Path of = Path.of(fileName);
+                String line = nbLineOrigine + "\t" + logKbart.getMessage();
+
                 if (Files.exists(of)) {
                     //  Inscrit la ligne dedans
                     Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
@@ -85,44 +107,5 @@ public class LogsListener {
 
         //  Inscrit l'entity en BDD
         repository.save(logKbart);
-    }
-
-    @KafkaListener(topics = {"${topic.name.source.endoftraitement}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
-    public void listener(ConsumerRecord<String, String> message) throws IOException {
-
-        //  Créer un nouveau Path avec le FileName (en remplaçant l'extension par .bad)
-        Path source = null;
-        for (Header header : message.headers().toArray()) {
-            if (header.key().equals("FileName")) {
-                source = Path.of(new String(header.value()).replace(".tsv", ".bad"));
-                break;
-            }
-        }
-
-        log.info("End of traitement : " + message.value());
-
-        if( message.value().equals("KO")) {
-            //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
-            if (source != null && Files.exists(source)) {
-
-
-                //  Vérification du chemin et création si inexistant
-                String tempLog = "tempLog" + File.separator;
-                File chemin = new File(tempLog);
-                if (!chemin.isDirectory()) {
-                    Files.createDirectory(Paths.get(tempLog));
-                }
-                Path target = Path.of(tempLog + source);
-                Files.deleteIfExists(target);
-
-                //  Déplacement du fichier
-                Files.move(source, target, StandardCopyOption.REPLACE_EXISTING);
-                log.info("Fichier de log d'erreur transféré dans le dossier temporaire.");
-            }
-        } else if(message.value().equals("OK")) {
-            assert source != null;
-            Files.deleteIfExists(source);
-            log.info("Fichier de log d'erreur supprimé si existe");
-        }
     }
 }

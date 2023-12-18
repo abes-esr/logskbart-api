@@ -7,7 +7,7 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-public class Kbart2KafkaDto {
+public class LogKbartDto {
     private InstantDto instant;
     private String thread;
     private String level;
