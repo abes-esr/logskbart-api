@@ -53,6 +53,9 @@ public class LogKbart implements Serializable {
     @Column(name = "THREAD_PRIORITY")
     private Integer threadPriority;
 
+    @Column(name = "NB_LINE")
+    private Integer nbLine;
+
     @Override
     public String toString() {
         return "LogKbart{" +
@@ -62,6 +65,8 @@ public class LogKbart implements Serializable {
                 ", level=" + level +
                 ", message='" + message + '\'' +
                 ", loggerFqcn='" + loggerFqcn + '\'' +
+                ", nbLine='" + nbLine + '\'' +
+
                 '}';
     }
 

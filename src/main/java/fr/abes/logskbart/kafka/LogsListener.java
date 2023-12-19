@@ -53,12 +53,13 @@ public class LogsListener {
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
         String[] listMessage = message.key().split(";");
-        log.info(Arrays.toString(listMessage));
+        log.debug(Arrays.toString(listMessage));
         // recuperation de l'heure a laquelle le message a ete envoye
         Timestamp currentTimestamp = new Timestamp(message.timestamp());
         logKbart.setTimestamp(new Date(currentTimestamp.getTime()));
         logKbart.setPackageName(listMessage[0]);
         String nbLineOrigine = (listMessage.length > 1) ? listMessage[1] : "";
+        logKbart.setNbLine(Integer.parseInt((nbLineOrigine.isEmpty() ? "-1" : nbLineOrigine) ));
 
         logKbart.log();
 
@@ -73,7 +74,7 @@ public class LogsListener {
             //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
             if (logKbart.getLevel().toString().equals("ERROR")) {
                 if (lastTimeStampByFilename.get(logKbart.getPackageName()) != null) {
-                    Timestamp LastTimestampPlusTwoMinutes = new Timestamp(lastTimeStampByFilename.get(logKbart.getPackageName()).getTime() + TimeUnit.MINUTES.toMillis(2 * 60 * 1000));
+                    Timestamp LastTimestampPlusTwoMinutes = new Timestamp(lastTimeStampByFilename.get(logKbart.getPackageName()).getTime() + TimeUnit.MINUTES.toMillis(2 ));
 
                     // Si ca fait 2min qu'on a pas recu de message pour ce fichier
                     if (currentTimestamp.after(LastTimestampPlusTwoMinutes)) {

@@ -17,6 +17,7 @@ public class LogKbartDto {
     private String loggerFqcn;
     private Integer threadId;
     private Integer threadPriority;
+    private Integer nbLine;
 
     @Getter @Setter
     private static class InstantDto {

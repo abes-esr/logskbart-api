@@ -33,6 +33,7 @@ public class LogsMapper {
                 target.setThreadId(source.getThreadId());
                 target.setThreadPriority(source.getThreadPriority());
                 target.setLoggerName(source.getLoggerName());
+                target.setNbLine(source.getNbLine());
                 return target;
             }
         };
@@ -47,6 +48,7 @@ public class LogsMapper {
                 LigneLogDto target = new LigneLogDto();
                 target.setLevel(source.getLevel().toString());
                 target.setMessage(source.getMessage());
+                target.setNbLine(source.getNbLine());
                 return target;
             }
         };

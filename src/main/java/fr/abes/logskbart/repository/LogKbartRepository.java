@@ -11,5 +11,5 @@ import java.util.List;
 @Repository
 @LogsBdConfiguration
 public interface LogKbartRepository extends JpaRepository<LogKbart, Long> {
-    List<LogKbart> findAllByPackageNameAndTimestampBetween(String filename, Date debut, Date fin);
+    List<LogKbart> findAllByPackageNameAndTimestampBetweenOrderByNbLineAscTimestampAsc(String filename, Date debut, Date fin);
 }

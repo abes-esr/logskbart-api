@@ -8,4 +8,5 @@ import lombok.Setter;
 public class LigneLogDto {
     private String level;
     private String message;
+    private Integer nbLine;
 }
