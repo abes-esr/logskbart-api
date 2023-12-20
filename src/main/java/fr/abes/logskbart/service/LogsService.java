@@ -24,6 +24,6 @@ public class LogsService {
         Calendar dateFin = (Calendar) dateChargement.clone();
         dateFin.add(Calendar.DAY_OF_MONTH, 1);
         log.debug("packageName {}, Date début {}, Date fin {}", packageName, dateChargement.getTime(), dateFin.getTime());
-        return repository.findAllByPackageNameAndTimestampBetween(packageName, dateChargement.getTime(), dateFin.getTime());
+        return repository.findAllByPackageNameAndTimestampBetweenOrderByNbLineAscTimestampAsc(packageName, dateChargement.getTime(), dateFin.getTime());
     }
 }

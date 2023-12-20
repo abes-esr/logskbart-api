@@ -1,3 +1,4 @@
+*.bad
 *.properties
 hibernate.cfg.xml
 HELP.md
