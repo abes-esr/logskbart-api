@@ -47,7 +47,7 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"${topic.name.source.error}", "${topic.name.source.info}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"${topic.name.source.error}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
         LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
