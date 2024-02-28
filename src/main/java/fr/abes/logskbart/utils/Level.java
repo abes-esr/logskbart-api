@@ -1,5 +1,5 @@
 package fr.abes.logskbart.utils;
 
 public enum Level {
-    INFO, ERROR
+    INFO, ERROR, WARN
 }
