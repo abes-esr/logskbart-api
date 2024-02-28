@@ -9,7 +9,7 @@ API permettant de :
 4. d'exposer un web service permettant de récupérer les logs associés à un fichier kbart
 
 ## Schéma de l'architecture du projet Convergence
-![schéma de l'architecture du projet Convergence](documentation/ArchitectureConvergence.svg "schéma de l'architecture du projet Convergence")
+![schéma de l'architecture du projet Convergence](https://raw.githubusercontent.com/abes-esr/kbart2kafka/fb60a20d84e7cf06722044559bdb18165e6e13e0/documentation/ArchitectureConvergence.svg "schéma de l'architecture du projet Convergence")
 
 ## Récupération des logs
 *(class `LogsListener.java`)*
