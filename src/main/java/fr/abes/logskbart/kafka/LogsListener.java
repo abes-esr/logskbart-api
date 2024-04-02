@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.LogKbartDto;
 import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.repository.LogKbartRepository;
+import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -33,11 +34,14 @@ public class LogsListener {
 
     private final Map<String, Timestamp> lastTimeStampByFilename;
 
-    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogKbartRepository repository, Map<String, Timestamp> lastTimeStampByFilename) {
+    private final EmailService emailService;
+
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogKbartRepository repository, Map<String, Timestamp> lastTimeStampByFilename, EmailService emailService) {
         this.mapper = mapper;
         this.logsMapper = logsMapper;
         this.repository = repository;
         this.lastTimeStampByFilename = lastTimeStampByFilename;
+        this.emailService = emailService;
     }
 
 
@@ -48,7 +52,7 @@ public class LogsListener {
      * @throws IOException exception levée
      */
     @KafkaListener(topics = {"${topic.name.source.error}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
-    public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
+    public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException, InterruptedException {
         LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
@@ -71,12 +75,13 @@ public class LogsListener {
             }
             Path of = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
 
-            //  Si la ligne de log sur le topic errorkbart2kafka est de type ERROR
+            //  Si la ligne de log sur le topic est de type ERROR
             if (logKbart.getLevel().toString().equals("ERROR")) {
+
                 if (lastTimeStampByFilename.get(logKbart.getPackageName()) != null) {
                     Timestamp LastTimestampPlusTwoMinutes = new Timestamp(lastTimeStampByFilename.get(logKbart.getPackageName()).getTime() + TimeUnit.MINUTES.toMillis(2 ));
 
-                    // Si ca fait 2min qu'on a pas recu de message pour ce fichier
+                    // Si ça fait 2min qu'on n'a pas reçu de message pour ce fichier
                     if (currentTimestamp.after(LastTimestampPlusTwoMinutes)) {
                         log.debug("Suppression fichier " + logKbart.getPackageName() + " si existe");
                         Files.deleteIfExists(of);
@@ -103,9 +108,14 @@ public class LogsListener {
                         throw new RuntimeException(e);
                     }
                 }
+            } else if (logKbart.getLevel().toString().equals("INFO") && logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) {
+                // Envoi du mail uniquement si le fichier temporaire a été créé
+                if (Files.exists(of)) {
+                    Thread.sleep(20000); // pour attendre que tous les threads de best-ppn-api aient terminé leurs traitements
+                    emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
+                }
             }
         }
-
         //  Inscrit l'entity en BDD
         repository.save(logKbart);
     }
