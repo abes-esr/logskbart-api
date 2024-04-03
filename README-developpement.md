@@ -46,10 +46,6 @@ Dans le fichier `application.properties` :
 Dans les fichiers `application-localhost.properties`, `application-dev.properties`, `application-test.properties` et `application-prod.properties`
 ```yaml
 # Base Postgres
-spring.datasource.logsdb.driver-class-name=org.postgresql.Driver
-spring.datasource.logsdb.jdbcurl=
-spring.datasource.logsdb.username=
-spring.datasource.logsdb.password=
 
 spring.jpa.logsdb.database-platform=org.hibernate.dialect.PostgreSQLDialect
 spring.jpa.logsdb.properties.hibernate.dialect=org.hibernate.dialect.PostgreSQLDialect
