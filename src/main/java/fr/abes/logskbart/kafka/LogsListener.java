@@ -12,7 +12,9 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.channels.FileLock;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
@@ -92,17 +94,31 @@ public class LogsListener {
                 String line = nbLineOrigine + "\t" + logKbart.getMessage();
 
                 if (Files.exists(of)) {
-                    //  Inscrit la ligne dedans
-                    Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                    FileOutputStream fos = new FileOutputStream(String.valueOf(of), true);
+                    FileLock lock = fos.getChannel().lock();
+                    try (fos) {
+                        //  Inscrit la ligne dedans
+                        Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                    } finally {
+                        lock.release();
+                        lock.close();
+                    }
                 } else if (!Files.exists(of)) {
                     try {
-                        //  Créer le fichier et inscrit la ligne dedans
-                        Files.createFile(of);
-                        //  Créer la ligne d'en-tête
-                        Files.write(of, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                        //  Inscrit les informations sur la ligne
-                        Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                        log.info("Fichier temporaire créé.");
+                        FileOutputStream fos = new FileOutputStream(String.valueOf(of), true);
+                        FileLock lock = fos.getChannel().lock();
+                        try (fos) {
+                            //  Créer le fichier et inscrit la ligne dedans
+                            Files.createFile(of);
+                            //  Créer la ligne d'en-tête
+                            Files.write(of, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                            //  Inscrit les informations sur la ligne
+                            Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                            log.info("Fichier temporaire créé.");
+                        } finally {
+                            lock.release();
+                            lock.close();
+                        }
                     } catch (SecurityException | IOException e) {
                         log.error("Erreur lors de la création du fichier temporaire. " + e);
                         throw new RuntimeException(e);
