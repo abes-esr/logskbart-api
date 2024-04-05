@@ -52,7 +52,7 @@ public class LogsListener {
      * @throws IOException exception levée
      */
     @KafkaListener(topics = {"${topic.name.source.error}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
-    public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException, InterruptedException {
+    public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
         LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
@@ -108,15 +108,29 @@ public class LogsListener {
                         throw new RuntimeException(e);
                     }
                 }
-            } else if (logKbart.getLevel().toString().equals("INFO") && logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) {
-                // Envoi du mail uniquement si le fichier temporaire a été créé
-                if (Files.exists(of)) {
-                    Thread.sleep(20000); // pour attendre que tous les threads de best-ppn-api aient terminé leurs traitements
-                    emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
-                }
             }
         }
         //  Inscrit l'entity en BDD
         repository.save(logKbart);
+    }
+
+    /**
+     * Ecoute les topic de log d'erreurs et de fin de traitement bestPpn et génère un fichier err pour chaque fichier kbart
+     *
+     * @param message le message kafka
+     * @throws IOException exception levée
+     */
+    @KafkaListener(topics = {"${topic.name.source.error}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
+    public void listenBestppnapiEndoftraitmentMessage(ConsumerRecord<String, String> message) throws IOException, InterruptedException {
+        LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
+        LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
+        if (logKbart.getLevel().toString().equals("INFO") && logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) {
+            // Envoi du mail uniquement si le fichier temporaire a été créé
+            Path of = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
+            if (Files.exists(of)) {
+                Thread.sleep(20000); // pour attendre que tous les threads de best-ppn-api aient terminé leurs traitements
+                emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
+            }
+        }
     }
 }
