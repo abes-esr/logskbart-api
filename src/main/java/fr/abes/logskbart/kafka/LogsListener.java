@@ -18,6 +18,7 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +58,7 @@ public class LogsListener {
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
         String[] listMessage = message.key().split(";");
-//        log.debug(Arrays.toString(listMessage));
+        log.debug(Arrays.toString(listMessage));
         // recuperation de l'heure a laquelle le message a ete envoye
         Timestamp currentTimestamp = new Timestamp(message.timestamp());
         logKbart.setTimestamp(new Date(currentTimestamp.getTime()));
@@ -65,7 +66,7 @@ public class LogsListener {
         String nbLineOrigine = (listMessage.length > 1) ? listMessage[1] : "";
         logKbart.setNbLine(Integer.parseInt((nbLineOrigine.isEmpty() ? "-1" : nbLineOrigine) ));
 
-//        logKbart.log();
+        logKbart.log();
 
         // Vérifie qu'un fichier portant le nom du kbart en cours existe
         if (!logKbart.getPackageName().contains("ctx:package") && !logKbart.getPackageName().contains("_FORCE")) {
