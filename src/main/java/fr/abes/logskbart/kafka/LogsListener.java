@@ -8,21 +8,17 @@ import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.common.header.Header;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.nio.channels.FileLock;
 import java.nio.file.*;
-import java.sql.Date;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
-import java.util.Locale;
+import java.time.ZoneId;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -61,7 +57,7 @@ public class LogsListener {
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
         String[] listMessage = message.key().split(";");
-        log.debug(Arrays.toString(listMessage));
+//        log.debug(Arrays.toString(listMessage));
         // recuperation de l'heure a laquelle le message a ete envoye
         Timestamp currentTimestamp = new Timestamp(message.timestamp());
         logKbart.setTimestamp(new Date(currentTimestamp.getTime()));
@@ -69,7 +65,7 @@ public class LogsListener {
         String nbLineOrigine = (listMessage.length > 1) ? listMessage[1] : "";
         logKbart.setNbLine(Integer.parseInt((nbLineOrigine.isEmpty() ? "-1" : nbLineOrigine) ));
 
-        logKbart.log();
+//        logKbart.log();
 
         // Vérifie qu'un fichier portant le nom du kbart en cours existe
         if (!logKbart.getPackageName().contains("ctx:package") && !logKbart.getPackageName().contains("_FORCE")) {
@@ -82,6 +78,9 @@ public class LogsListener {
 
             //  Si la ligne de log sur le topic est de type ERROR
             if (logKbart.getLevel().toString().equals("ERROR")) {
+
+                // vérifie la présence de fichiers obsolètes dans le répertoire tempLogLocal et les supprime le cas échéant
+                deleteOldLocalTempLog();
 
                 if (lastTimeStampByFilename.get(logKbart.getPackageName()) != null) {
                     Timestamp LastTimestampPlusTwoMinutes = new Timestamp(lastTimeStampByFilename.get(logKbart.getPackageName()).getTime() + TimeUnit.MINUTES.toMillis(2 ));
@@ -120,18 +119,37 @@ public class LogsListener {
                     if(!Files.exists(tempPathTarget)) {
                         Files.createDirectory(tempPathTarget);
                     }
-                    //  Copie le fichier existant vers le répertoire temporaire en ajoutant sa date de création
-                    if (of != null && Files.exists(of)) {
-                        Path target = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
-                        //  Déplacement du fichier
-                        Files.copy(of, target, StandardCopyOption.REPLACE_EXISTING);
-                        log.info("Fichier de log transféré dans le dossier temporaire.");
-                    }
+                    //  Copie le fichier existant vers le répertoire temporaire
+                    Path target = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
+                    //  Déplacement du fichier
+                    Files.copy(of, target, StandardCopyOption.REPLACE_EXISTING);
+                    log.info("Fichier de log transféré dans le dossier temporaire.");
+
                     emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
                 }
             }
         }
         //  Inscrit l'entity en BDD
         repository.save(logKbart);
+    }
+
+    public void deleteOldLocalTempLog() throws IOException {
+        File dirToCheck = new File("tempLogLocal");
+        File[] listeFilesTempLogLocal = dirToCheck.listFiles();
+        if (listeFilesTempLogLocal != null) {
+            for (File fileToCheck: listeFilesTempLogLocal) {
+                BasicFileAttributes basicFileAttributes = Files.readAttributes(fileToCheck.toPath(), BasicFileAttributes.class);
+                if (basicFileAttributes.isRegularFile()) {
+                    String nameFile = String.valueOf(fileToCheck);
+                    Date dateOfLastModification = new Date(basicFileAttributes.lastModifiedTime().toMillis());
+                    Date dateNow = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+                    long interval = dateNow.getTime() - dateOfLastModification.getTime();
+                    if (interval > 600000) {
+                        fileToCheck.delete();
+                        log.debug("Fichier obsolète supprimé : " + nameFile);
+                    }
+                }
+            }
+        }
     }
 }
