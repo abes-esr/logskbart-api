@@ -33,7 +33,7 @@ public class EmailService {
     public void sendMailWithAttachment(String packageName, Path mailAttachmentPath) {
         try {
             //  Création du mail
-            String requestJson = mailToJSON(this.recipient, "[CONVERGENCE]["+env.toUpperCase()+"] Log(s) d'erreur de " + packageName + ".csv", "");
+            String requestJson = mailToJSON(this.recipient, "[CONVERGENCE]["+env.toUpperCase()+"] Log(s) d'erreur de " + packageName, "");
 
             //  Récupération du fichier
             File file = mailAttachmentPath.toFile();
