@@ -101,8 +101,8 @@ public class LogsListener {
                         // On verifie que le traitement commence pour supp les anciens logs du .bad (ps message venant de kbart2kafka)
                 if (logKbart.getMessage().contains("Debut envois kafka de : " + logKbart.getPackageName())){
                     Files.deleteIfExists(of);
-                        // On verifie que le traitement est terminé (ps message venant de best-ppn-api)
-                }else if( logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName()) ) {
+                        // On verifie que le traitement est terminé (ps message venant de best-ppn-api ou kbart2kafka)
+                }else if( (logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) || (logKbart.getMessage().contains("Traitement refusé du fichier " + logKbart.getPackageName())) ) {
                     // Envoi du mail uniquement si le fichier temporaire a été créé
                     if (Files.exists(of)) {
                         Path tempPathTarget = Path.of("tempLog");
