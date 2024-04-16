@@ -20,8 +20,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
@@ -33,15 +31,12 @@ public class LogsListener {
 
     private final LogKbartRepository repository;
 
-    private final Map<String, Timestamp> lastTimeStampByFilename;
-
     private final EmailService emailService;
 
-    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogKbartRepository repository, Map<String, Timestamp> lastTimeStampByFilename, EmailService emailService) {
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogKbartRepository repository, EmailService emailService) {
         this.mapper = mapper;
         this.logsMapper = logsMapper;
         this.repository = repository;
-        this.lastTimeStampByFilename = lastTimeStampByFilename;
         this.emailService = emailService;
     }
 
@@ -83,17 +78,6 @@ public class LogsListener {
                 // vérifie la présence de fichiers obsolètes dans le répertoire tempLogLocal et les supprime le cas échéant
                 deleteOldLocalTempLog();
 
-                if (lastTimeStampByFilename.get(logKbart.getPackageName()) != null) {
-                    Timestamp LastTimestampPlusTwoMinutes = new Timestamp(lastTimeStampByFilename.get(logKbart.getPackageName()).getTime() + TimeUnit.MINUTES.toMillis(2 ));
-
-                    // Si ça fait 2min qu'on n'a pas reçu de message pour ce fichier
-                    if (currentTimestamp.after(LastTimestampPlusTwoMinutes)) {
-                        log.debug("Suppression fichier " + logKbart.getPackageName() + " si existe");
-                        Files.deleteIfExists(of);
-                    }
-                }
-                lastTimeStampByFilename.put(logKbart.getPackageName(), currentTimestamp);
-
                 String line = nbLineOrigine + "\t" + logKbart.getMessage();
 
                 if (Files.exists(of)) {
@@ -113,20 +97,26 @@ public class LogsListener {
                         throw new RuntimeException(e);
                     }
                 }
-            } else if (logKbart.getLevel().toString().equals("INFO") && logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) {
-                // Envoi du mail uniquement si le fichier temporaire a été créé
-                if (Files.exists(of)) {
-                    Path tempPathTarget = Path.of("tempLog");
-                    if(!Files.exists(tempPathTarget)) {
-                        Files.createDirectory(tempPathTarget);
-                    }
-                    //  Copie le fichier existant vers le répertoire temporaire
-                    Path target = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
-                    //  Déplacement du fichier
-                    Files.copy(of, target, StandardCopyOption.REPLACE_EXISTING);
-                    log.info("Fichier de log transféré dans le dossier temporaire.");
+            } else if (logKbart.getLevel().toString().equals("INFO")) {
+                        // On verifie que le traitement commence pour supp les anciens logs du .bad (ps message venant de kbart2kafka)
+                if (logKbart.getMessage().contains("Debut envois kafka de : " + logKbart.getPackageName())){
+                    Files.deleteIfExists(of);
+                        // On verifie que le traitement est terminé (ps message venant de best-ppn-api ou kbart2kafka)
+                }else if( (logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) || (logKbart.getMessage().contains("Traitement refusé du fichier " + logKbart.getPackageName())) ) {
+                    // Envoi du mail uniquement si le fichier temporaire a été créé
+                    if (Files.exists(of)) {
+                        Path tempPathTarget = Path.of("tempLog");
+                        if (!Files.exists(tempPathTarget)) {
+                            Files.createDirectory(tempPathTarget);
+                        }
+                        //  Copie le fichier existant vers le répertoire temporaire
+                        Path target = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
+                        //  Déplacement du fichier
+                        Files.copy(of, target, StandardCopyOption.REPLACE_EXISTING);
+                        log.info("Fichier de log transféré dans le dossier temporaire.");
 
-                    emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
+                        emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
+                    }
                 }
             }
         }
@@ -146,7 +136,7 @@ public class LogsListener {
                     Date dateNow = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
                     long interval = dateNow.getTime() - dateOfLastModification.getTime();
                     if (interval > 600000) {
-                        fileToCheck.delete();
+                        Files.deleteIfExists(fileToCheck.toPath());
                         log.debug("Fichier obsolète supprimé : " + nameFile);
                     }
                 }
