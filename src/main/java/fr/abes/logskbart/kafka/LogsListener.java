@@ -13,7 +13,10 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -70,7 +73,7 @@ public class LogsListener {
             if(!Files.exists(tempPath)) {
                 Files.createDirectory(tempPath);
             }
-            Path of = Path.of("tempLogLocal" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
+            Path pathOfBadLocal = Path.of("tempLogLocal" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
 
             //  Si la ligne de log sur le topic est de type ERROR
             if (logKbart.getLevel().toString().equals("ERROR")) {
@@ -80,17 +83,17 @@ public class LogsListener {
 
                 String line = nbLineOrigine + "\t" + logKbart.getMessage();
 
-                if (Files.exists(of)) {
+                if (Files.exists(pathOfBadLocal)) {
                     //  Inscrit la ligne dedans
-                    Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                } else if (!Files.exists(of)) {
+                    Files.write(pathOfBadLocal, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                } else if (!Files.exists(pathOfBadLocal)) {
                     try {
                         //  Créer le fichier et inscrit la ligne dedans
-                        Files.createFile(of);
+                        Files.createFile(pathOfBadLocal);
                         //  Créer la ligne d'en-tête
-                        Files.write(of, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                        Files.write(pathOfBadLocal, ("LINE\tMESSAGE" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                         //  Inscrit les informations sur la ligne
-                        Files.write(of, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                        Files.write(pathOfBadLocal, (line + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                         log.info("Fichier temporaire créé.");
                       } catch (SecurityException | IOException e) {
                         log.error("Erreur lors de la création du fichier temporaire. " + e);
@@ -100,22 +103,26 @@ public class LogsListener {
             } else if (logKbart.getLevel().toString().equals("INFO")) {
                         // On verifie que le traitement commence pour supp les anciens logs du .bad (ps message venant de kbart2kafka)
                 if (logKbart.getMessage().contains("Debut envois kafka de : " + logKbart.getPackageName())){
-                    Files.deleteIfExists(of);
+                    Files.deleteIfExists(pathOfBadLocal);
                         // On verifie que le traitement est terminé (ps message venant de best-ppn-api ou kbart2kafka)
                 }else if( (logKbart.getMessage().contains("Traitement terminé pour fichier " + logKbart.getPackageName())) || (logKbart.getMessage().contains("Traitement refusé du fichier " + logKbart.getPackageName())) ) {
                     // Envoi du mail uniquement si le fichier temporaire a été créé
-                    if (Files.exists(of)) {
+                    if (Files.exists(pathOfBadLocal)) {
                         Path tempPathTarget = Path.of("tempLog");
                         if (!Files.exists(tempPathTarget)) {
                             Files.createDirectory(tempPathTarget);
                         }
                         //  Copie le fichier existant vers le répertoire temporaire
-                        Path target = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
+                        Path pathOfBadFinal = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".bad"));
                         //  Déplacement du fichier
-                        Files.copy(of, target, StandardCopyOption.REPLACE_EXISTING);
+                        Files.copy(pathOfBadLocal, pathOfBadFinal, StandardCopyOption.REPLACE_EXISTING);
                         log.info("Fichier de log transféré dans le dossier temporaire.");
 
-                        emailService.sendMailWithAttachment(logKbart.getPackageName(), of);
+                        // Suppression du .log car Useless si cas là
+                        Path pathOfLog = Path.of("tempLog" + File.separator + logKbart.getPackageName().replace(".tsv", ".log"));
+                        Files.deleteIfExists(pathOfLog);
+
+                        emailService.sendMailWithAttachment(logKbart.getPackageName(), pathOfBadLocal);
                     }
                 }
             }
