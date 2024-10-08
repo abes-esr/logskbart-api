@@ -57,11 +57,12 @@ public class LogsListener {
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
 
         // recuperation de l'heure a laquelle le message a ete envoye
+        String[] key = message.key().split(";");
+
         Timestamp currentTimestamp = new Timestamp(message.timestamp());
         logKbart.setTimestamp(new Date(currentTimestamp.getTime()));
-        logKbart.setPackageName(message.key().split(";")[0]);
-        String nbLineOrigine = (message.key().split(";").length > 1) ? message.key().split(";")[1] : "";
-        logKbart.setNbLine(Integer.parseInt((nbLineOrigine.isEmpty() ? "-1" : nbLineOrigine) ));
+        logKbart.setPackageName(key[0]);
+        logKbart.setNbLine(Integer.parseInt(((key.length > 1) ? key[1] : "-1") ));
 
         Integer nbRun = service.getLastNbRun(logKbart.getPackageName());
         if(logKbart.getMessage().contains("Debut envois kafka de :")){
@@ -91,9 +92,8 @@ public class LogsListener {
                     Date dateOfLastModification = new Date(basicFileAttributes.lastModifiedTime().toMillis());
                     Date dateNow = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
                     long interval = dateNow.getTime() - dateOfLastModification.getTime();
-                    if (interval > 600000) {
-                        Files.deleteIfExists(fileToCheck.toPath());
-                        log.debug("Fichier obsolète supprimé : " + nameFile);
+                    if (interval > 600000 && Files.deleteIfExists(fileToCheck.toPath())) {
+                        log.debug("Fichier obsolète supprimé : {}", nameFile);
                     }
                 }
             }
@@ -143,12 +143,13 @@ public class LogsListener {
 
             // Suppression du .log car Useless si cas là
             Path pathOfLog = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".log"));
-            log.info("Suppression de " + pathOfLog.toString());
+            log.info("Suppression de " + pathOfLog);
             Files.deleteIfExists(pathOfLog);
+
+            emailService.sendMailWithAttachment(filename, pathOfBadLocal);
+
             log.info("Suppression de " + pathOfBadLocal + " en local");
             Files.deleteIfExists(pathOfBadLocal);
-
-//        emailService.sendMailWithAttachment(filename, pathOfBadLocal);
         }
 
     }
