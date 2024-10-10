@@ -145,12 +145,15 @@ public class LogsListener {
             Path pathOfLog = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".log"));
             log.info("Suppression de " + pathOfLog);
             Files.deleteIfExists(pathOfLog);
-
-            emailService.sendMailWithAttachment(filename, pathOfBadLocal);
+            long tailleDixMo = 10 * 1024 * 1024;
+            if( pathOfBadFinal.toFile().length() < tailleDixMo) {
+                emailService.sendMailWithAttachment(filename, pathOfBadLocal);
+            } else {
+                emailService.sendEmail(filename, "Le fichier est trop volumineux, retrouvez le sur le chemin : /applis/bacon/toLoad/"+filename.replace(".tsv", ".bad"));
+            }
 
             log.info("Suppression de " + pathOfBadLocal + " en local");
             Files.deleteIfExists(pathOfBadLocal);
         }
-
     }
 }

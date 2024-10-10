@@ -11,9 +11,14 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -30,10 +35,18 @@ public class EmailService {
     @Value("${spring.profiles.active}")
     private String env;
 
+    public void sendEmail(String packageName, String message) {
+        //  Création du mail
+        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : erreurs]" + getTag() + " " + packageName, message);
+
+        //  Envoi du message par mail
+        sendMail(requestJson);
+    }
+
     public void sendMailWithAttachment(String packageName, Path mailAttachmentPath) {
         try {
             //  Création du mail
-            String requestJson = mailToJSON(this.recipient, "[CONVERGENCE]["+env.toUpperCase()+"] Log(s) d'erreur de " + packageName, "");
+            String requestJson = mailToJSON(this.recipient, "[KBART2BACON : erreurs]" + getTag() + " " + packageName, "/applis/bacon/toLoad/"+mailAttachmentPath.getFileName());
 
             //  Récupération du fichier
             File file = mailAttachmentPath.toFile();
@@ -81,6 +94,31 @@ public class EmailService {
         }
     }
 
+    protected void sendMail(String requestJson) {
+        RestTemplate restTemplate = new RestTemplate(); //appel ws qui envoie le mail
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        org.springframework.http.HttpEntity<String> entity = new org.springframework.http.HttpEntity<>(requestJson, headers);
+
+        restTemplate.getMessageConverters()
+                .add(0, new StringHttpMessageConverter(StandardCharsets.UTF_8));
+
+        try {
+            restTemplate.postForObject(url + "htmlMail/", entity, String.class); //appel du ws avec
+        } catch (Exception e) {
+            log.warn("Erreur dans l'envoi du mail d'erreur Sudoc" + e);
+        }
+        //  Création du l'adresse du ws d'envoi de mails
+        HttpPost mail = new HttpPost(this.url + "htmlMail/");
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
+            httpClient.execute(mail);
+        } catch (IOException e) {
+            log.warn("Erreur lors de l'envoi du mail. " + e);
+        }
+    }
+
     protected String mailToJSON(String to, String subject, String text) {
         String json = "";
         ObjectMapper mapper = new ObjectMapper();
@@ -97,5 +135,13 @@ public class EmailService {
             log.warn("Erreur lors de la création du mail. " + e);
         }
         return json;
+    }
+
+    private String getTag(){
+        if(env.equalsIgnoreCase("PROD")){
+            return "";
+        } else {
+            return "[" + env.toUpperCase() + "]";
+        }
     }
 }
