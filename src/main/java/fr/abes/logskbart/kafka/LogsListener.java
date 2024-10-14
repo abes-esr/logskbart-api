@@ -65,6 +65,9 @@ public class LogsListener {
         logKbart.setNbLine(Integer.parseInt(((key.length > 1) ? key[1] : "-1") ));
 
         Integer nbRun = service.getLastNbRun(logKbart.getPackageName());
+        if(nbRun == null){
+            nbRun = 0;
+        }
         if(logKbart.getMessage().contains("Debut envois kafka de :")){
             nbRun++;
         }
