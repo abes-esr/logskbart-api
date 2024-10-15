@@ -13,24 +13,25 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Configuration
 @EnableKafka
 public class KafkaConfig {
-    @Value("${spring.kafka.consumer.bootstrap-servers}")
+    @Value("${abes.kafka.bootstrap-servers}")
     private String bootstrapAddress;
-
-    @Value("${topic.groupid.source}")
-    private String groupId;
 
 
     @Bean
     public ConsumerFactory<String, String> consumerLogsFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapAddress);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
+        props.put(ConsumerConfig.GROUP_INSTANCE_ID_CONFIG,("SchedulerCoordinator"+ UUID.randomUUID()));
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10);
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 60000);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 

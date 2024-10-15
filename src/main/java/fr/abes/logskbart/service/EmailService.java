@@ -41,6 +41,8 @@ public class EmailService {
 
         //  Envoi du message par mail
         sendMail(requestJson);
+
+        log.info("L'email a été correctement envoyé à " + recipient);
     }
 
     public void sendMailWithAttachment(String packageName, Path mailAttachmentPath) {
@@ -57,7 +59,7 @@ public class EmailService {
             //  Suppression du fichier temporaire
             Files.deleteIfExists(mailAttachmentPath);
 
-            log.info("L'email a été correctement envoyé à " + recipient);
+            log.info("L'email avec PJ a été correctement envoyé à " + recipient);
 
         } catch (IOException e) {
             throw new RuntimeException(e);
