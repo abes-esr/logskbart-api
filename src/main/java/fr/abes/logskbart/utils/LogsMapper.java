@@ -25,7 +25,7 @@ public class LogsMapper {
             public LogKbart convert(MappingContext<LogKbartDto, LogKbart> context) {
                 LogKbartDto source = context.getSource();
                 LogKbart target = new LogKbart();
-                target.setLevel(Level.valueOf(source.getLevel()));
+                target.setLevel(source.getLevel());
                 target.setMessage(source.getMessage());
                 target.setThread(source.getThread());
                 target.setLoggerFqcn(source.getLoggerFqcn());
@@ -46,7 +46,7 @@ public class LogsMapper {
             public LigneLogDto convert(MappingContext<LogKbart, LigneLogDto> context) {
                 LogKbart source = context.getSource();
                 LigneLogDto target = new LigneLogDto();
-                target.setLevel(source.getLevel().toString());
+                target.setLevel(source.getLevel());
                 target.setMessage(source.getMessage());
                 target.setNbLine(source.getNbLine());
                 return target;

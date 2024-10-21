@@ -16,6 +16,7 @@ import java.util.Optional;
 public class LogsService {
     private final LogKbartRepository repository;
 
+
     public LogsService(LogKbartRepository repository) {
         this.repository = repository;
     }
@@ -29,20 +30,21 @@ public class LogsService {
         return repository.findAllByPackageNameAndTimestampBetweenOrderByNbLineAscTimestampAsc(packageName, dateChargement.getTime(), dateFin.getTime());
     }
 
-    public LogKbart save(LogKbart logKbart) {
-        return repository.save(logKbart);
+    public void saveAll(List<LogKbart> logKbarts) {
+        repository.saveAll(logKbarts);
     }
 
     public Integer getLastNbRun(String packageName) {
-        Optional<LogKbart> logKbart = repository.getFirstByPackageNameOrderByNbRunDesc(packageName);
-        if(logKbart.isPresent()) {
-            return logKbart.get().getNbRun();
-        } else {
-            return 0;
+        List<LogKbart> logskbart = repository.findByPackageNameOrderByNbRunDesc(packageName);
+        Optional<LogKbart> logKbart = logskbart.stream().findFirst();
+        if (logKbart.isPresent()) {
+            Integer nbRun = logKbart.get().getNbRun();
+            return (nbRun != null) ? nbRun : 0;
         }
+        return 0;
     }
 
     public List<LogKbart> getErrorLogKbartByPackageAndNbRun(String packageName, Integer nbRun) {
-        return repository.findAllByPackageNameAndNbRunAndLevelOrderByNbLineAscTimestampAsc(packageName,nbRun, Level.ERROR);
+        return repository.findAllByPackageNameAndNbRunAndLevelOrderByNbLineAscTimestampAsc(packageName,nbRun, String.valueOf(Level.ERROR));
     }
 }

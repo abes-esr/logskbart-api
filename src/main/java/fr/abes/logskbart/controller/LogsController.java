@@ -1,7 +1,7 @@
 package fr.abes.logskbart.controller;
 
 import fr.abes.logskbart.dto.LigneLogDto;
-import fr.abes.logskbart.dto.LogDto;
+import fr.abes.logskbart.dto.LogWebDto;
 import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,18 +34,18 @@ public class LogsController {
             summary = "Transfer kafka to PostgreSQL DB",
             description = "Retrieves kbart load logs from a Kafka bus and stores them in a DB for later availability",
             responses = {
-                    @ApiResponse( responseCode = "200", description = "The request was successful.", content = { @Content(schema = @Schema(implementation = LogDto.class), mediaType = "application/json") } ),
+                    @ApiResponse( responseCode = "200", description = "The request was successful.", content = { @Content(schema = @Schema(implementation = LogWebDto.class), mediaType = "application/json") } ),
                     @ApiResponse( responseCode = "400", description = "An element of the query is badly formulated.", content = { @Content(schema = @Schema()) } ),
                     @ApiResponse( responseCode = "500", description = "An internal server error interrupted processing.", content = { @Content(schema = @Schema()) } ),
             }
     )
     @GetMapping("/logs/{filename}/{date}")
-    public LogDto getLogsFromPackageAndDate(@PathVariable String filename, @PathVariable String date) throws ParseException {
+    public LogWebDto getLogsFromPackageAndDate(@PathVariable String filename, @PathVariable String date) throws ParseException {
         SimpleDateFormat format = new SimpleDateFormat("ddMMyyyy");
         Date dateAnalyse = format.parse(date);
-        LogDto logDto = new LogDto(filename, date);
+        LogWebDto logWebDto = new LogWebDto(filename, date);
         List<LigneLogDto> lignes = mapper.mapList(service.getLogKbartForPackage(filename, dateAnalyse), LigneLogDto.class);
-        logDto.addLignes(lignes);
-        return logDto;
+        logWebDto.addLignes(lignes);
+        return logWebDto;
     }
 }

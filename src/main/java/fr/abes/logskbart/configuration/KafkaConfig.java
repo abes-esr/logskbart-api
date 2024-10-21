@@ -1,5 +1,6 @@
 package fr.abes.logskbart.configuration;
 
+import fr.abes.logskbart.kafka.WorkInProgress;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,11 +10,13 @@ import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.ContainerProperties;
 
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Configuration
 @EnableKafka
@@ -30,8 +33,8 @@ public class KafkaConfig {
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, true);
-        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10);
-        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 60000);
+        props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 100);
+        props.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, 30000);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
@@ -45,7 +48,7 @@ public class KafkaConfig {
     }
 
     @Bean
-    public Map<String, Timestamp> lastTimeStampByFilename() {
-        return new HashMap<>();
+    public Map<String, WorkInProgress> workInProgressMap() {
+        return new ConcurrentHashMap<>();
     }
 }

@@ -1,62 +1,57 @@
 package fr.abes.logskbart.entity;
 
 import fr.abes.logskbart.utils.Level;
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.elasticsearch.annotations.Document;
+import org.springframework.data.elasticsearch.annotations.Field;
 
 import java.io.Serializable;
 import java.util.Date;
 
-@Entity
-@Table(name = "LOGKBART")
-@Getter
-@Setter
-@NoArgsConstructor
+@Document(indexName = "logkbart")
+@Data
 @Slf4j
 public class LogKbart implements Serializable {
     @Id
-    @Column(name = "ID")
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Field(name = "ID")
+    private String id;
 
-    @Column(name = "PACKAGE_NAME")
+    @Field(name = "PACKAGE_NAME")
     private String packageName;
 
-    @Column(name = "TIMESTAMP")
+    @Field(name = "TIMESTAMP")
     private Date timestamp;
 
-    @Column(name = "THREAD")
+    @Field(name = "THREAD")
     private String thread;
 
-    @Column(name = "LEVEL")
-    @Enumerated(EnumType.STRING)
-    private Level level;
+    @Field(name = "LEVEL")
+    private String level;
 
-    @Column(name = "LOGGER_NAME")
+    @Field(name = "LOGGER_NAME")
     private String loggerName;
 
-    @Column(name = "message", length = 2048)
+    @Field(name = "MESSAGE")
     private String message;
 
-    @Column(name = "END_OF_BATCH")
+    @Field(name = "END_OF_BATCH")
     private boolean endOfBatch;
 
-    @Column(name = "LOGGER_FQCN")
+    @Field(name = "LOGGER_FQCN")
     private String loggerFqcn;
 
-    @Column(name = "THREAD_ID")
+    @Field(name = "THREAD_ID")
     private Integer threadId;
 
-    @Column(name = "THREAD_PRIORITY")
+    @Field(name = "THREAD_PRIORITY")
     private Integer threadPriority;
 
-    @Column(name = "NB_LINE", nullable = false)
+    @Field(name = "NB_LINE")
     private Integer nbLine;
 
-    @Column(name = "NB_RUN", nullable = false)
+    @Field(name = "NB_RUN")
     private Integer nbRun = 0;
 
     @Override
