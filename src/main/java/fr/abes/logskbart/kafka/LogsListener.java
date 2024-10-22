@@ -8,8 +8,10 @@ import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -21,14 +23,18 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 @Slf4j
 @Service
 public class LogsListener {
+    @Value("${elasticsearch.max-packet-size}")
+    private int maxPacketSize;
 
     private final ObjectMapper mapper;
 
@@ -40,12 +46,15 @@ public class LogsListener {
 
     private final Map<String, WorkInProgress> workInProgressMap;
 
-    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, EmailService emailService, Map<String, WorkInProgress> workInProgressMap) {
+    private final Executor executor;
+
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, EmailService emailService, Map<String, WorkInProgress> workInProgressMap, Executor executor) {
         this.mapper = mapper;
         this.logsMapper = logsMapper;
         this.service = service;
         this.emailService = emailService;
         this.workInProgressMap = workInProgressMap;
+        this.executor = executor;
     }
 
 
@@ -60,46 +69,38 @@ public class LogsListener {
         LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         // recuperation de l'heure a laquelle le message a ete envoye
         String[] key = message.key().split(";");
+        dto.setNbLine(Integer.parseInt(((key.length > 1) ? key[1] : "-1")));
         String packageName = key[0];
-        if (!this.workInProgressMap.containsKey(packageName)) {
-            //nouveau fichier trouvé dans le topic, on initialise les variables partagées
-            log.debug("Nouveau package identifié : " + packageName);
-            workInProgressMap.put(packageName, new WorkInProgress());
-        }
-        workInProgressMap.get(packageName).addMessage(dto);
-        if (!packageName.contains("ctx:package") && !packageName.contains("_FORCE")) {
+        if (!packageName.equals("${ctx:package}")) {
+            if (!this.workInProgressMap.containsKey(packageName)) {
+                //nouveau fichier trouvé dans le topic, on initialise les variables partagées
+                log.debug("Nouveau package identifié : " + packageName);
+                workInProgressMap.put(packageName, new WorkInProgress());
+            }
+            LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
+            logKbart.setPackageName(packageName);
+            logKbart.setTimestamp(new Date(message.timestamp()));
+            workInProgressMap.get(packageName).addMessage(logKbart);
+
             if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
-                log.debug("Commit les datas pour fichier " + packageName);
-                Integer nbLine = Integer.parseInt(((key.length > 1) ? key[1] : "-1"));
-                Integer nbRun = commitDatas(message.timestamp(), packageName, nbLine);
-                createFileBad(packageName, nbRun);
+                saveDatas(workInProgressMap.get(packageName).getMessages());
+                if (!packageName.contains("_FORCE")) {
+                    createFileBad(packageName);
+                }
                 workInProgressMap.remove(packageName);
             }
         }
     }
 
-    private Integer commitDatas(long timeStamp, String packageName, Integer nbLine) {
-        long startTime = System.currentTimeMillis();
-        log.debug("Debut Commit datas pour fichier " + packageName);
-        List<LogKbart> logskbart = logsMapper.mapList(workInProgressMap.get(packageName).getMessages(), LogKbart.class);
-        int nbRun = service.getLastNbRun(packageName) + 1;
-        log.debug("NbRun: " + nbRun);
-        saveDatas(timeStamp, packageName, nbLine, logskbart, nbRun);
-        log.debug("datas saved pour fichier " + packageName);
-        long endTime = System.currentTimeMillis();
-        double executionTime = (double) (endTime - startTime) / 1000;
-        log.debug("Execution time: " + executionTime);
-        return nbRun;
-    }
-
-    private void saveDatas(long timeStamp, String packageName, Integer nbLine, List<LogKbart> logskbart, int nbRun) {
-        logskbart.forEach(logKbart -> {
-            logKbart.setNbRun(nbRun);
-            logKbart.setTimestamp(new Date(timeStamp));
-            logKbart.setPackageName(packageName);
-            logKbart.setNbLine(nbLine);
-        });
-        service.saveAll(logskbart);
+    private void saveDatas(List<LogKbart> logskbart) {
+        //découpage de la liste en paquets de maxPacketSize pour sauvegarde dans ES pour éviter le timeout ou une erreur ES
+        IntStream.range(0, (logskbart.size() + maxPacketSize - 1) / maxPacketSize)
+                .mapToObj(i -> logskbart.subList(i * maxPacketSize, Math.min((i + 1) * maxPacketSize, logskbart.size())))
+                .toList().forEach(logskbartList -> executor.execute(() -> {
+                    log.debug("Saving logskbart : {}", logskbartList.size());
+                    service.saveAll(logskbartList);
+                }));
+        log.debug("Sortie de la sauvegarde");
     }
 
     public void deleteOldLocalTempLog() throws IOException {
@@ -121,8 +122,11 @@ public class LogsListener {
         }
     }
 
-    private void createFileBad(String filename, Integer nbRun) throws IOException {
-        List<LogKbart> logKbartList = service.getErrorLogKbartByPackageAndNbRun(filename, nbRun);
+    private void createFileBad(String filename) throws IOException {
+        log.debug("Entrée dans createFileBad : {}", filename);
+        List<LogKbart> logskbartList = workInProgressMap.get(filename).getMessages().stream().filter(message -> message.getLevel().equals("ERROR")).sorted().toList();
+        log.debug("Taille liste : " + logskbartList.size());
+        //List<LogKbart> logKbartList = service.getErrorLogKbartByPackageAndNbRun(filename, nbRun);
         Path tempPath = Path.of("tempLogLocal");
         if (!Files.exists(tempPath)) {
             Files.createDirectory(tempPath);
@@ -131,7 +135,7 @@ public class LogsListener {
         // vérifie la présence de fichiers obsolètes dans le répertoire tempLogLocal et les supprime le cas échéant
         deleteOldLocalTempLog();
 
-        logKbartList.forEach(logKbart -> {
+        logskbartList.forEach(logKbart -> {
             try {
                 if (Files.exists(pathOfBadLocal)) {
                     //  Inscrit la ligne dedans
@@ -140,7 +144,7 @@ public class LogsListener {
                     //  Créer le fichier et inscrit la ligne dedans
                     Files.createFile(pathOfBadLocal);
                     //  Créer la ligne d'en-tête
-                    Files.write(pathOfBadLocal, ("LINE\tMESSAGE\t(" + nbRun + ")" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
+                    Files.write(pathOfBadLocal, ("LINE\tMESSAGE\t" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                     //  Inscrit les informations sur la ligne
                     Files.write(pathOfBadLocal, (logKbart.getNbLine() + "\t" + logKbart.getMessage() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
                     log.info("Fichier temporaire créé.");

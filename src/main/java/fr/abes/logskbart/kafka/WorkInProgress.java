@@ -15,7 +15,7 @@ import java.util.List;
 @Setter
 @Slf4j
 public class WorkInProgress {
-    private List<LogKbartDto> messages;
+    private List<LogKbart> messages;
 
     private Timestamp timestamp;
 
@@ -23,7 +23,7 @@ public class WorkInProgress {
         this.messages = Collections.synchronizedList(new ArrayList<>());
     }
 
-    public void addMessage(LogKbartDto message) {
+    public void addMessage(LogKbart message) {
         this.messages.add(message);
     }
 

@@ -11,7 +11,5 @@ import java.util.List;
 public interface LogKbartRepository extends ElasticsearchRepository<LogKbart, Long> {
     List<LogKbart> findAllByPackageNameAndTimestampBetweenOrderByNbLineAscTimestampAsc(String filename, Date debut, Date fin);
 
-    List<LogKbart> findAllByPackageNameAndNbRunAndLevelOrderByNbLineAscTimestampAsc(String filename, Integer nbRun, String level);
 
-    List<LogKbart> findByPackageNameOrderByNbRunDesc(String filename);
 }

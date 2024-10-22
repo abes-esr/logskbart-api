@@ -8,12 +8,14 @@ import org.springframework.data.elasticsearch.annotations.Document;
 import org.springframework.data.elasticsearch.annotations.Field;
 
 import java.io.Serializable;
+import java.util.Comparator;
 import java.util.Date;
+import java.util.Objects;
 
 @Document(indexName = "logkbart")
 @Data
 @Slf4j
-public class LogKbart implements Serializable {
+public class LogKbart implements Serializable, Comparable<LogKbart> {
     @Id
     @Field(name = "ID")
     private String id;
@@ -51,8 +53,6 @@ public class LogKbart implements Serializable {
     @Field(name = "NB_LINE")
     private Integer nbLine;
 
-    @Field(name = "NB_RUN")
-    private Integer nbRun = 0;
 
     @Override
     public String toString() {
@@ -64,12 +64,17 @@ public class LogKbart implements Serializable {
                 ", message='" + message + '\'' +
                 ", loggerFqcn='" + loggerFqcn + '\'' +
                 ", nbLine='" + nbLine + '\'' +
-                ", nbRun='" + nbRun + '\'' +
-
                 '}';
     }
 
     public void log(){
         log.debug( this.level +" : " + this);
+    }
+
+    @Override
+    public int compareTo(LogKbart logKbart) {
+        if (!Objects.equals(this.nbLine, logKbart.getNbLine()))
+            return Integer.compare(this.nbLine, logKbart.getNbLine());
+        return this.timestamp.compareTo(logKbart.getTimestamp());
     }
 }
