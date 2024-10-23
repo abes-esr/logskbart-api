@@ -5,7 +5,7 @@ export SPRING_ELASTICSEARCH_URIS=${SPRING_ELASTICSEARCH_URIS:='http://localhost:
 curl -X PUT "$SPRING_ELASTICSEARCH_URIS/logkbart" -H 'Content-Type: application/json' -d'
      {
      	"settings": {
-     		"number_of_shards": 5,
+     		"number_of_shards": 1,
      		"number_of_replicas": 0
      	},
      	"mappings": {
@@ -14,7 +14,13 @@ curl -X PUT "$SPRING_ELASTICSEARCH_URIS/logkbart" -H 'Content-Type: application/
      				"type": "text"
      			},
      			"PACKAGE_NAME": {
-     				"type": "text"
+     				"type": "text",
+     				"fields": {
+     				  "keyword": {
+     				    "type": "keyword",
+     				    "ignore_above": 256
+     				  }
+     				}
      			},
      			"TIMESTAMP": {
      				"type": "date"

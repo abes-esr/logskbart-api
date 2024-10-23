@@ -19,6 +19,10 @@ public class ExceptionControllerHandler extends ResponseEntityExceptionHandler {
         return new ResponseEntity<>(apiReturnError, apiReturnError.getStatus());
     }
 
+    @ExceptionHandler(EmptyFileException.class)
+    protected ResponseEntity<Object> handleEmptyFileException(EmptyFileException e) {
+        return buildResponseEntity(new ApiReturnError(HttpStatus.NOT_FOUND, e.getMessage()));
+    }
     /**
      * Erreur dans la validité des paramètres de la requête
      *
