@@ -56,4 +56,4 @@ curl -X PUT "$SPRING_ELASTICSEARCH_URIS/logkbart" -H 'Content-Type: application/
      	}
      }'
 
-java -jar /app/logskbart-api.jar
+java -Xms4G -Xmx4G -XX:+UseG1GC -XX:ConcGCThreads=5 -XX:+ExitOnOutOfMemoryError -XX:MaxGCPauseMillis=100 -jar /app/logskbart-api.jar
