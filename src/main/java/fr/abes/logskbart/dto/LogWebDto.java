@@ -8,12 +8,12 @@ import java.util.List;
 
 @Getter
 @Setter
-public class LogDto {
+public class LogWebDto {
     public String filename;
     public String date;
     List<LigneLogDto> ligneLogs;
 
-    public LogDto(String filename, String date) {
+    public LogWebDto(String filename, String date) {
         this.filename = filename;
         this.date = date;
         this.ligneLogs = new ArrayList<>();
