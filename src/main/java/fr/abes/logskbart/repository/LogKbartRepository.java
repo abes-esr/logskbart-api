@@ -1,7 +1,6 @@
 package fr.abes.logskbart.repository;
 
 import fr.abes.logskbart.entity.LogKbart;
-import org.springframework.data.domain.*;
 import org.springframework.data.elasticsearch.repository.ElasticsearchRepository;
 import org.springframework.stereotype.Repository;
 

@@ -20,7 +20,6 @@ import java.util.stream.Stream;
 @Service
 @Slf4j
 public class LogsService {
-    private static final Integer MAXSIZE = 5000;
     private final LogKbartRepository repository;
 
     public LogsService(LogKbartRepository logKbartRepository) {
@@ -67,9 +66,5 @@ public class LogsService {
     public void saveAll(List<LogKbart> logKbarts) {
         repository.saveAll(logKbarts);
         log.debug("Save done !");
-    }
-
-    public void save(LogKbart logKbart) {
-        repository.save(logKbart);
     }
 }
