@@ -3,15 +3,12 @@ package fr.abes.logskbart.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.LogKbartDto;
 import fr.abes.logskbart.entity.LogKbart;
-import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -23,10 +20,10 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
@@ -42,17 +39,14 @@ public class LogsListener {
 
     private final LogsService service;
 
-    private final EmailService emailService;
-
     private final Map<String, WorkInProgress> workInProgressMap;
 
     private final Executor executor;
 
-    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, EmailService emailService, Map<String, WorkInProgress> workInProgressMap, Executor executor) {
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, Map<String, WorkInProgress> workInProgressMap, Executor executor) {
         this.mapper = mapper;
         this.logsMapper = logsMapper;
         this.service = service;
-        this.emailService = emailService;
         this.workInProgressMap = workInProgressMap;
         this.executor = executor;
     }
@@ -170,12 +164,6 @@ public class LogsListener {
             Path pathOfLog = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".log"));
             log.info("Suppression de " + pathOfLog);
             Files.deleteIfExists(pathOfLog);
-            long tailleDixMo = 10 * 1024 * 1024;
-            if (pathOfBadFinal.toFile().length() < tailleDixMo) {
-                emailService.sendMailWithAttachment(filename, pathOfBadLocal);
-            } else {
-                emailService.sendEmail(filename, "Le fichier est trop volumineux, retrouvez le sur le chemin : /applis/bacon/toLoad/" + filename.replace(".tsv", ".bad"));
-            }
 
             log.info("Suppression de " + pathOfBadLocal + " en local");
             Files.deleteIfExists(pathOfBadLocal);
