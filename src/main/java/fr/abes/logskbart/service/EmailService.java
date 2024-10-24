@@ -68,7 +68,7 @@ public class EmailService {
 
     protected void sendMailWithFile(String requestJson, File f) {
         //  Création du l'adresse du ws d'envoi de mails
-        HttpPost uploadFile = new HttpPost(this.url + "htmlMailAttachment/");
+        HttpPost uploadFile = new HttpPost(this.url + "v2/htmlMailAttachment/");
 
         //  Création du builder
         MultipartEntityBuilder builder = MultipartEntityBuilder.create();
