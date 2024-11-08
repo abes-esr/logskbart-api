@@ -1,17 +1,16 @@
 package fr.abes.logskbart.controller;
 
-import fr.abes.logskbart.dto.LigneLogDto;
 import fr.abes.logskbart.dto.LogWebDto;
-import fr.abes.logskbart.entity.LogKbart;
 import fr.abes.logskbart.exception.EmptyFileException;
 import fr.abes.logskbart.service.LogsService;
-import fr.abes.logskbart.utils.UtilsMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -21,10 +20,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.nio.file.Path;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.List;
 
 @Tag(name = "Logskbart-api localhost", description = "Logskbart localhost managements APIs")
 @RestController
@@ -66,4 +66,16 @@ public class LogsController {
                 .body(new InputStreamResource(fs));
 
     }
+
+    @GetMapping(value = "/file/{filename}")
+    public ResponseEntity<Resource> downloadFile(@PathVariable("filename") String filename) throws FileNotFoundException, MalformedURLException {
+        Path pathOf = Path.of("tempLog" + File.separator + filename);
+        Resource resource = new UrlResource(pathOf.toUri());
+        if (resource.exists() && resource.isReadable()) {
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=\"" + resource.getFilename() + "\"")
+                    .body(resource);
+        } else {
+            throw new FileNotFoundException("Le fichier est introuvable :"+ filename);
+        }}
 }
