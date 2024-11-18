@@ -9,7 +9,7 @@
     </parent>
     <groupId>fr.abes</groupId>
     <artifactId>logskbart-api</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
     <name>logskbart-api</name>
     <description>Api de récupération de logs dans Kafka pour stockage dans BDD et fourniture</description>
