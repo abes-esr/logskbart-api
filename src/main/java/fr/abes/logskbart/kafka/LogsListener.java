@@ -3,6 +3,7 @@ package fr.abes.logskbart.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.LogKbartDto;
 import fr.abes.logskbart.entity.LogKbart;
+import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,7 @@ import java.util.stream.IntStream;
 @Slf4j
 @Service
 public class LogsListener {
+    private final EmailService emailService;
     @Value("${elasticsearch.max-packet-size}")
     private int maxPacketSize;
 
@@ -43,12 +45,13 @@ public class LogsListener {
 
     private final Executor executor;
 
-    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, Map<String, WorkInProgress> workInProgressMap, Executor executor) {
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, Map<String, WorkInProgress> workInProgressMap, Executor executor, EmailService emailService) {
         this.mapper = mapper;
         this.logsMapper = logsMapper;
         this.service = service;
         this.workInProgressMap = workInProgressMap;
         this.executor = executor;
+        this.emailService = emailService;
     }
 
 
@@ -79,9 +82,10 @@ public class LogsListener {
             if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
                 saveDatas(workInProgressMap.get(packageName).getMessages());
                 if (!packageName.contains("_FORCE") || workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
-                    (log.getNbLine() == -1) && log.getMessage().equals("Format du fichier incorrect")
+                        (log.getNbLine() == -1) && log.getMessage().equals("Format du fichier incorrect")
                 )) {
                     createFileBad(packageName);
+                    emailService.sendEmail(packageName);
                 }
                 workInProgressMap.remove(packageName);
             }
