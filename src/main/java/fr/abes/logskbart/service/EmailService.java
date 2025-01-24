@@ -35,7 +35,7 @@ public class EmailService {
 
     public void sendEmail(String packageName) {
         //  Création du mail
-        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : erreurs]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + packageName.replace(".tsv", ".bad") + "\">Cliquez pour télécharger le fichier .bad</a>");
+        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : erreurs]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + packageName.replace(".tsv", ".bad") + "\" target=\"_blank\">Cliquez pour télécharger le fichier .bad</a>");
 
         //  Envoi du message par mail
         sendMail(requestJson);
