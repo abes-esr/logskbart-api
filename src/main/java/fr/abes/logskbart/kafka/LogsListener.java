@@ -85,7 +85,9 @@ public class LogsListener {
                         (log.getNbLine() == -1) && log.getMessage().equals("Format du fichier incorrect")
                 )) {
                     createFileBad(packageName);
-                    emailService.sendEmail(packageName);
+                    if(Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
+                        emailService.sendEmail(packageName);
+                    }
                 }
                 workInProgressMap.remove(packageName);
             }
