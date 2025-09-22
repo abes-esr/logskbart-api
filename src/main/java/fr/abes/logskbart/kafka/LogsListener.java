@@ -82,10 +82,10 @@ public class LogsListener {
             if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
                 saveDatas(workInProgressMap.get(packageName).getMessages());
                 if (!packageName.contains("_FORCE") || workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
-                        (log.getNbLine() == -1) && log.getMessage().equals("Format du fichier incorrect")
+                        (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
                 )) {
                     createFileBad(packageName);
-                    if(Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
+                    if (Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
                         emailService.sendEmail(packageName);
                     }
                 }
