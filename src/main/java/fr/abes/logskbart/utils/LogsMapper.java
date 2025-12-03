@@ -3,9 +3,9 @@ package fr.abes.logskbart.utils;
 import fr.abes.logskbart.dto.LigneLogDto;
 import fr.abes.logskbart.dto.LogKbartDto;
 import fr.abes.logskbart.entity.LogKbart;
+import jakarta.annotation.PostConstruct;
 import org.modelmapper.Converter;
 import org.modelmapper.spi.MappingContext;
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -19,7 +19,7 @@ public class LogsMapper {
     /**
      * Convertion d'une Dto InfoBaconDto en modèle LogKbart
      */
-    @Bean
+    @PostConstruct
     public void converterInfoBaconDtoToLogKbart() {
         Converter<LogKbartDto, LogKbart> myConverter = new Converter<LogKbartDto, LogKbart>() {
             public LogKbart convert(MappingContext<LogKbartDto, LogKbart> context) {
@@ -40,7 +40,7 @@ public class LogsMapper {
         mapper.addConverter(myConverter);
     }
 
-    @Bean
+    @PostConstruct
     public void converterLogKbartToLogDto() {
         Converter<LogKbart, LigneLogDto> myConverter = new Converter<LogKbart, LigneLogDto>() {
             public LigneLogDto convert(MappingContext<LogKbart, LigneLogDto> context) {
