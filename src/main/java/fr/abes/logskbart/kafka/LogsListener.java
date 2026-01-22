@@ -69,28 +69,32 @@ public class LogsListener {
         dto.setNbLine(Integer.parseInt(((key.length > 1) ? key[1] : "-1")));
         String packageName = key[0];
         if (!packageName.equals("${ctx:package}")) {
-            if (!this.workInProgressMap.containsKey(packageName)) {
-                //nouveau fichier trouvé dans le topic, on initialise les variables partagées
-                log.debug("Nouveau package identifié : " + packageName);
-                workInProgressMap.put(packageName, new WorkInProgress());
-            }
-            LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
-            logKbart.setPackageName(packageName);
-            logKbart.setTimestamp(new Date(message.timestamp()));
-            workInProgressMap.get(packageName).addMessage(logKbart);
+            traiterMessage(message, packageName, dto);
+        }
+    }
 
-            if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
-                saveDatas(workInProgressMap.get(packageName).getMessages());
-                if (!packageName.contains("_FORCE") || workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
-                        (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
-                )) {
-                    createFileBad(packageName);
-                    if (Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
-                        emailService.sendEmail(packageName);
-                    }
+    private void traiterMessage(ConsumerRecord<String, String> message, String packageName, LogKbartDto dto) throws IOException {
+        if (!this.workInProgressMap.containsKey(packageName)) {
+            //nouveau fichier trouvé dans le topic, on initialise les variables partagées
+            log.debug("Nouveau package identifié : " + packageName);
+            workInProgressMap.put(packageName, new WorkInProgress());
+        }
+        LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
+        logKbart.setPackageName(packageName);
+        logKbart.setTimestamp(new Date(message.timestamp()));
+        workInProgressMap.get(packageName).addMessage(logKbart);
+
+        if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
+            saveDatas(workInProgressMap.get(packageName).getMessages());
+            if (!packageName.contains("_FORCE") || workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
+                    (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
+            )) {
+                createFileBad(packageName);
+                if (Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
+                    emailService.sendEmail(packageName);
                 }
-                workInProgressMap.remove(packageName);
             }
+            workInProgressMap.remove(packageName);
         }
     }
 
@@ -165,7 +169,7 @@ public class LogsListener {
             //  Copie le fichier existant vers le répertoire temporaire
             Path pathOfBadFinal = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".bad"));
             //  Déplacement du fichier
-            Files.copy(pathOfBadLocal, pathOfBadFinal, StandardCopyOption.REPLACE_EXISTING);
+            Files.move(pathOfBadLocal, pathOfBadFinal, StandardCopyOption.REPLACE_EXISTING);
             log.info("Fichier de log transféré dans le dossier temporaire.");
 
             // Suppression du .log car Useless si cas là
