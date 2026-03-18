@@ -22,18 +22,19 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
 @Slf4j
 @Service
 public class LogsListener {
-    private final long dureeMax = 1000 * 60 * 60 * 24;
     private final EmailService emailService;
+    @Value("${abes.in-memory.max-retention}")
+    private long maxRetention;
     @Value("${elasticsearch.max-packet-size}")
     private int maxPacketSize;
 
@@ -63,7 +64,7 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"${topic.name.source.error}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"${topic.name.source.logs}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
         LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         // recuperation de l'heure a laquelle le message a ete envoye
@@ -95,8 +96,7 @@ public class LogsListener {
             if (!packageName.contains("_FORCE") || this.workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
                     (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
             )) {
-                createFileBad(packageName);
-                if (Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
+                if (createFileBad(packageName)) {
                     emailService.sendEmail(packageName);
                 }
             }
@@ -107,7 +107,7 @@ public class LogsListener {
     public void freeObsoleteFromMap() {
         this.workInProgressMap.entrySet().removeIf(entry -> {
             long age = System.currentTimeMillis() - entry.getValue().getTimestamp().getTime();
-            return age > this.dureeMax;
+            return age > this.maxRetention;
         });
     }
 
@@ -115,14 +115,14 @@ public class LogsListener {
         //découpage de la liste en paquets de maxPacketSize pour sauvegarde dans ES pour éviter le timeout ou une erreur ES
         IntStream.range(0, (logskbart.size() + maxPacketSize - 1) / maxPacketSize)
                 .mapToObj(i -> logskbart.subList(i * maxPacketSize, Math.min((i + 1) * maxPacketSize, logskbart.size())))
-                .toList().forEach(logskbartList -> executor.execute(() -> {
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::synchronizedList))
+                .forEach(logskbartList -> executor.execute(() -> {
                     log.debug("Saving logskbart : {}", logskbartList.size());
                     service.saveAll(logskbartList);
                 }));
-        log.debug("Sortie de la sauvegarde");
     }
 
-    public void deleteOldLocalTempLog() throws IOException {
+    private void deleteOldLocalTempLog() throws IOException {
         File dirToCheck = new File("tempLogLocal");
         File[] listeFilesTempLogLocal = dirToCheck.listFiles();
         if (listeFilesTempLogLocal != null) {
@@ -141,7 +141,7 @@ public class LogsListener {
         }
     }
 
-    private void createFileBad(String filename) throws IOException {
+    private boolean createFileBad(String filename) throws IOException {
         log.debug("Entrée dans createFileBad : {}", filename);
         List<LogKbart> logskbartList = workInProgressMap.get(filename).getMessages().stream().filter(message -> message.getLevel().equals("ERROR")).sorted().toList();
         log.debug("Taille liste : {}", logskbartList.size());
@@ -192,6 +192,8 @@ public class LogsListener {
 
             log.info("Suppression de {} en local", pathOfBadLocal);
             Files.deleteIfExists(pathOfBadLocal);
+            return true;
         }
+        return false;
     }
 }
