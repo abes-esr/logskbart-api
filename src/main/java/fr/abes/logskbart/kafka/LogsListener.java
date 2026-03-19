@@ -19,12 +19,13 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 
@@ -32,6 +33,8 @@ import java.util.stream.IntStream;
 @Service
 public class LogsListener {
     private final EmailService emailService;
+    @Value("${abes.in-memory.max-retention}")
+    private long maxRetention;
     @Value("${elasticsearch.max-packet-size}")
     private int maxPacketSize;
 
@@ -61,7 +64,7 @@ public class LogsListener {
      * @param message le message kafka
      * @throws IOException exception levée
      */
-    @KafkaListener(topics = {"${topic.name.source.error}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
+    @KafkaListener(topics = {"${topic.name.source.logs}"}, groupId = "${topic.groupid.source}", containerFactory = "kafkaLogsListenerContainerFactory")
     public void listenInfoKbart2KafkaAndErrorKbart2Kafka(ConsumerRecord<String, String> message) throws IOException {
         LogKbartDto dto = mapper.readValue(message.value(), LogKbartDto.class);
         // recuperation de l'heure a laquelle le message a ete envoye
@@ -75,41 +78,51 @@ public class LogsListener {
 
     private void traiterMessage(ConsumerRecord<String, String> message, String packageName, LogKbartDto dto) throws IOException {
         if (!this.workInProgressMap.containsKey(packageName)) {
+            //vidage de la map des objets qui n'auraient pas été supprimés via le workflow normal et trop anciens
+            freeObsoleteFromMap();
             //nouveau fichier trouvé dans le topic, on initialise les variables partagées
-            log.debug("Nouveau package identifié : " + packageName);
-            workInProgressMap.put(packageName, new WorkInProgress());
+            log.debug("Nouveau package identifié : {} ", packageName);
+            WorkInProgress workInProgress = new WorkInProgress();
+            workInProgress.setTimestamp(new Timestamp(System.currentTimeMillis()));
+            this.workInProgressMap.put(packageName, workInProgress);
         }
         LogKbart logKbart = logsMapper.map(dto, LogKbart.class);
         logKbart.setPackageName(packageName);
         logKbart.setTimestamp(new Date(message.timestamp()));
-        workInProgressMap.get(packageName).addMessage(logKbart);
+        this.workInProgressMap.get(packageName).addMessage(logKbart);
 
         if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
-            saveDatas(workInProgressMap.get(packageName).getMessages());
-            if (!packageName.contains("_FORCE") || workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
+            saveDatas(this.workInProgressMap.get(packageName).getMessages());
+            if (!packageName.contains("_FORCE") || this.workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
                     (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
             )) {
-                createFileBad(packageName);
-                if (Files.exists(Path.of("tempLog" + File.separator + packageName.replace(".tsv", ".bad")))) {
+                if (createFileBad(packageName)) {
                     emailService.sendEmail(packageName);
                 }
             }
-            workInProgressMap.remove(packageName);
+            this.workInProgressMap.remove(packageName);
         }
+    }
+
+    public void freeObsoleteFromMap() {
+        this.workInProgressMap.entrySet().removeIf(entry -> {
+            long age = System.currentTimeMillis() - entry.getValue().getTimestamp().getTime();
+            return age > this.maxRetention;
+        });
     }
 
     private void saveDatas(List<LogKbart> logskbart) {
         //découpage de la liste en paquets de maxPacketSize pour sauvegarde dans ES pour éviter le timeout ou une erreur ES
         IntStream.range(0, (logskbart.size() + maxPacketSize - 1) / maxPacketSize)
                 .mapToObj(i -> logskbart.subList(i * maxPacketSize, Math.min((i + 1) * maxPacketSize, logskbart.size())))
-                .toList().forEach(logskbartList -> executor.execute(() -> {
+                .collect(Collectors.collectingAndThen(Collectors.toList(), Collections::synchronizedList))
+                .forEach(logskbartList -> executor.execute(() -> {
                     log.debug("Saving logskbart : {}", logskbartList.size());
                     service.saveAll(logskbartList);
                 }));
-        log.debug("Sortie de la sauvegarde");
     }
 
-    public void deleteOldLocalTempLog() throws IOException {
+    private void deleteOldLocalTempLog() throws IOException {
         File dirToCheck = new File("tempLogLocal");
         File[] listeFilesTempLogLocal = dirToCheck.listFiles();
         if (listeFilesTempLogLocal != null) {
@@ -128,10 +141,10 @@ public class LogsListener {
         }
     }
 
-    private void createFileBad(String filename) throws IOException {
+    private boolean createFileBad(String filename) throws IOException {
         log.debug("Entrée dans createFileBad : {}", filename);
         List<LogKbart> logskbartList = workInProgressMap.get(filename).getMessages().stream().filter(message -> message.getLevel().equals("ERROR")).sorted().toList();
-        log.debug("Taille liste : " + logskbartList.size());
+        log.debug("Taille liste : {}", logskbartList.size());
         //List<LogKbart> logKbartList = service.getErrorLogKbartByPackageAndNbRun(filename, nbRun);
         Path tempPath = Path.of("tempLogLocal");
         if (!Files.exists(tempPath)) {
@@ -156,7 +169,7 @@ public class LogsListener {
                     log.info("Fichier temporaire créé.");
                 }
             } catch (IOException e) {
-                log.error("Erreur lors de la création du fichier temporaire. " + e);
+                log.error("Erreur lors de la création du fichier temporaire. {}", e.getMessage());
                 throw new RuntimeException(e);
             }
         });
@@ -167,18 +180,20 @@ public class LogsListener {
                 Files.createDirectory(tempPathTarget);
             }
             //  Copie le fichier existant vers le répertoire temporaire
-            Path pathOfBadFinal = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".bad"));
+            Path pathOfBadFinal = Path.of("tempLog{}{}", File.separator, filename.replace(".tsv", ".bad"));
             //  Déplacement du fichier
             Files.move(pathOfBadLocal, pathOfBadFinal, StandardCopyOption.REPLACE_EXISTING);
             log.info("Fichier de log transféré dans le dossier temporaire.");
 
             // Suppression du .log car Useless si cas là
-            Path pathOfLog = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".log"));
-            log.info("Suppression de " + pathOfLog);
+            Path pathOfLog = Path.of("tempLog{}{}",File.separator, filename.replace(".tsv", ".log"));
+            log.info("Suppression de {}", pathOfLog);
             Files.deleteIfExists(pathOfLog);
 
-            log.info("Suppression de " + pathOfBadLocal + " en local");
+            log.info("Suppression de {} en local", pathOfBadLocal);
             Files.deleteIfExists(pathOfBadLocal);
+            return true;
         }
+        return false;
     }
 }
