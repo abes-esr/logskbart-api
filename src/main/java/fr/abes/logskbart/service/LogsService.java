@@ -39,7 +39,7 @@ public class LogsService {
         if (!Files.exists(tempPath)) {
             Files.createDirectory(tempPath);
         }
-        Path pathOfLocal = Path.of("tempLogLocal" + File.separator + packageName.replace(".tsv", ".log"));
+        Path pathOfLocal = Path.of("tempLogLocal", packageName.replace(".tsv", ".log"));
         Files.deleteIfExists(pathOfLocal);
         try (Stream<LogKbart> logKbarts = repository.findAllByPackageNameAndTimestampBetweenOrderByNbLineAscTimestampAsc(packageName, dateChargement.getTime(), dateFin.getTime())) {
             logKbarts.forEach(logKbart -> {
