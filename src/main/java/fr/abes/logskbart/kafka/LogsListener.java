@@ -180,13 +180,13 @@ public class LogsListener {
                 Files.createDirectory(tempPathTarget);
             }
             //  Copie le fichier existant vers le répertoire temporaire
-            Path pathOfBadFinal = Path.of("tempLog{}{}", File.separator, filename.replace(".tsv", ".bad"));
+            Path pathOfBadFinal = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".bad"));
             //  Déplacement du fichier
             Files.move(pathOfBadLocal, pathOfBadFinal, StandardCopyOption.REPLACE_EXISTING);
             log.info("Fichier de log transféré dans le dossier temporaire.");
 
             // Suppression du .log car Useless si cas là
-            Path pathOfLog = Path.of("tempLog{}{}",File.separator, filename.replace(".tsv", ".log"));
+            Path pathOfLog = Path.of("tempLog" + File.separator + filename.replace(".tsv", ".log"));
             log.info("Suppression de {}", pathOfLog);
             Files.deleteIfExists(pathOfLog);
 
