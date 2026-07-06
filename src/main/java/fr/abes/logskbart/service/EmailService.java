@@ -43,6 +43,16 @@ public class EmailService {
         log.info("L'email a été correctement envoyé à " + recipient);
     }
 
+    public void sendCandidatsDoublonsEmail(String packageName) {
+        //  Création du mail avec lien vers le fichier CandidatsDoublons.txt
+        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : Candidats Doublons]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + "CandidatsDoublons.txt" + "\" target=\"_blank\">Cliquez pour télécharger le fichier CandidatsDoublons.txt</a>");
+
+        //  Envoi du message par mail
+        sendMail(requestJson);
+
+        log.info("L'email CandidatsDoublons a été correctement envoyé à " + recipient);
+    }
+
     protected void sendMail(String requestJson) {
         RestTemplate restTemplate = new RestTemplate(); //appel ws qui envoie le mail
         HttpHeaders headers = new HttpHeaders();

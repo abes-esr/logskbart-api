@@ -24,6 +24,8 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.Executor;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -98,6 +100,8 @@ public class LogsListener {
             )) {
                 if (createFileBad(packageName)) {
                     emailService.sendEmail(packageName);
+                    appendToCandidatsDoublons(packageName);
+                    emailService.sendCandidatsDoublonsEmail(packageName);
                 }
             }
             this.workInProgressMap.remove(packageName);
@@ -195,5 +199,99 @@ public class LogsListener {
             return true;
         }
         return false;
+    }
+
+    /**
+     * Lit le fichier .bad généré et transforme les erreurs structurées
+     * pour les ajouter au fichier CandidatsDoublons.txt (concaténé)
+     *
+     * @param filename nom du fichier kbart traité
+     * @throws IOException erreur d'accès au fichier
+     */
+    private void appendToCandidatsDoublons(String filename) throws IOException {
+        Path badFile = Path.of("tempLog", filename.replace(".tsv", ".bad"));
+        if (!Files.exists(badFile)) {
+            log.debug("Fichier .bad non trouvé pour CandidatsDoublons : {}", badFile);
+            return;
+        }
+
+        // Nom du bouquet : nom de fichier sans extension ni suffixes _FORCE/_BYPASS
+        String bouquetName = filename.replace(".tsv", "").replaceAll("_(FORCE|BYPASS)$", "");
+
+        List<String> lines = Files.readAllLines(badFile);
+        StringBuilder linesToAdd = new StringBuilder();
+
+        for (String line : lines) {
+            // Sauter l'en-tête
+            if (line.startsWith("LINE\tMESSAGE")) {
+                continue;
+            }
+
+            // Extraire la partie message (après la tabulation)
+            String[] parts = line.split("\t", 2);
+            if (parts.length < 2) {
+                continue;
+            }
+            String message = parts[1];
+
+            // Ne traiter que les lignes contenant le format structuré
+            if (!message.contains("publication title : ")) {
+                continue;
+            }
+
+            // Extraction des champs via regex
+            String natureErreur = extractField(message, "^(.+?)\\(");
+            String ppns = extractField(message, "\\(([^)]+)\\)");
+            String titre = extractField(message, "publication title : (.+?)(?: /| \\])");
+            String typeRessource = extractField(message, "publication_type : (.+?)(?: /| \\])");
+            String idOnline = extractField(message, "online_identifier : (.+?)(?: /| \\])");
+            String idImprime = extractField(message, "print_identifier : (.+?)(?: /| \\])");
+
+            // Construction de la requête WinIBW
+            String requeteWinIBW = (ppns != null) ? "che ppn " + ppns : "";
+
+            // Construction de la ligne de sortie
+            linesToAdd.append(bouquetName).append("\t")
+                    .append(natureErreur != null ? natureErreur.trim() : "").append("\t")
+                    .append(requeteWinIBW).append("\t")
+                    .append(titre != null ? titre.trim() : "").append("\t")
+                    .append(typeRessource != null ? typeRessource.trim() : "").append("\t")
+                    .append(idOnline != null ? idOnline.trim() : "").append("\t")
+                    .append(idImprime != null ? idImprime.trim() : "")
+                    .append(System.lineSeparator());
+        }
+
+        if (linesToAdd.isEmpty()) {
+            log.debug("Aucune ligne à ajouter à CandidatsDoublons.txt pour {}", filename);
+            return;
+        }
+
+        // Écriture/ajout au fichier CandidatsDoublons.txt
+        Path candidatsDoublonsPath = Path.of("tempLog", "CandidatsDoublons.txt");
+        if (!Files.exists(candidatsDoublonsPath)) {
+            // Création du fichier avec en-tête
+            String header = "Nom du bouquet\tNature de l'erreur\trequête WinIBW\tTitre\tType de ressource\tId online\tId imprimé" + System.lineSeparator();
+            Files.write(candidatsDoublonsPath, (header + linesToAdd).getBytes());
+        } else {
+            Files.write(candidatsDoublonsPath, linesToAdd.toString().getBytes(), StandardOpenOption.APPEND);
+        }
+
+        log.info("Lignes ajoutées à CandidatsDoublons.txt pour le fichier {}", filename);
+    }
+
+    /**
+     * Extrait un champ d'un message via une expression régulière
+     *
+     * @param message le message à analyser
+     * @param regex   l'expression régulière (groupe 1 = valeur extraite)
+     * @return la valeur extraite ou null si non trouvée
+     */
+    private String extractField(String message, String regex) {
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(message);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 }
