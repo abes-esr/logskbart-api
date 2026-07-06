@@ -208,7 +208,7 @@ public class LogsListener {
      * @param filename nom du fichier kbart traité
      * @throws IOException erreur d'accès au fichier
      */
-    private void appendToCandidatsDoublons(String filename) throws IOException {
+    void appendToCandidatsDoublons(String filename) throws IOException {
         Path badFile = Path.of("tempLog", filename.replace(".tsv", ".bad"));
         if (!Files.exists(badFile)) {
             log.debug("Fichier .bad non trouvé pour CandidatsDoublons : {}", badFile);
@@ -286,7 +286,7 @@ public class LogsListener {
      * @param regex   l'expression régulière (groupe 1 = valeur extraite)
      * @return la valeur extraite ou null si non trouvée
      */
-    private String extractField(String message, String regex) {
+    String extractField(String message, String regex) {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(message);
         if (matcher.find()) {
