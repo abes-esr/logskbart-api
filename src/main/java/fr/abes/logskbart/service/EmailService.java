@@ -4,18 +4,18 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.MailDto;
 import lombok.extern.log4j.Log4j2;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.StringHttpMessageConverter;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
+import org.springframework.web.util.UriUtils;
 import org.springframework.web.client.RestTemplate;
 
-import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.List;
 
 @Log4j2
 @Service
@@ -33,14 +33,44 @@ public class EmailService {
     @Value("${serveur.url}")
     private String serveurUrl;
 
-    public void sendEmail(String packageName) {
-        //  Création du mail
-        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : erreurs]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + packageName.replace(".tsv", ".bad") + "\" target=\"_blank\">Cliquez pour télécharger le fichier .bad</a>");
+    public void sendOtherErrorsEmail(String packageName) {
+        String safePackageName = Path.of(packageName).getFileName().toString();
+        String reportName = safePackageName.replaceFirst("(?i)\\.tsv$", "_other.bad");
+        String reportUrl = reportUrl(reportName);
+        String requestJson = mailToJSON(
+                this.recipient,
+                "[KBART2BACON : erreurs hors 400]" + getTag() + " " + safePackageName,
+                "<a href=\"" + reportUrl + "\" target=\"_blank\">Cliquez pour télécharger "
+                        + HtmlUtils.htmlEscape(reportName) + "</a>"
+        );
 
-        //  Envoi du message par mail
-        sendMail(requestJson);
+        if (sendMail(requestJson)) {
+            log.info("L'email des erreurs hors 400 a été correctement envoyé à {}", recipient);
+        }
+    }
 
-        log.info("L'email a été correctement envoyé à " + recipient);
+    public boolean sendDailyRecapEmail(List<String> filenames) {
+        StringBuilder links = new StringBuilder("<p>Rapports d'erreurs 400 à traiter :</p>");
+        filenames.stream()
+                .distinct()
+                .sorted()
+                .forEach(filename -> links
+                        .append("<a href=\"")
+                        .append(reportUrl(filename))
+                        .append("\" target=\"_blank\">")
+                        .append(HtmlUtils.htmlEscape(filename))
+                        .append("</a><br/>"));
+
+        String requestJson = mailToJSON(
+                this.recipient,
+                "[KBART2BACON : récapitulatif erreurs 400]" + getTag(),
+                links.toString()
+        );
+        boolean sent = sendMail(requestJson);
+        if (sent) {
+            log.info("L'email quotidien des erreurs 400 a été correctement envoyé à {}", recipient);
+        }
+        return sent;
     }
 
     public void sendCandidatsDoublonsEmail(String packageName) {
@@ -53,7 +83,7 @@ public class EmailService {
         log.info("L'email CandidatsDoublons a été correctement envoyé à " + recipient);
     }
 
-    protected void sendMail(String requestJson) {
+    protected boolean sendMail(String requestJson) {
         RestTemplate restTemplate = new RestTemplate(); //appel ws qui envoie le mail
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
@@ -65,9 +95,16 @@ public class EmailService {
 
         try {
             restTemplate.postForObject(url + "htmlMail/", entity, String.class); //appel du ws avec
+            return true;
         } catch (Exception e) {
             log.warn("Erreur dans l'envoi du mail d'erreur Sudoc" + e);
+            return false;
         }
+    }
+
+    private String reportUrl(String filename) {
+        String baseUrl = serveurUrl.endsWith("/") ? serveurUrl : serveurUrl + "/";
+        return baseUrl + "bad/" + UriUtils.encodePathSegment(filename, StandardCharsets.UTF_8);
     }
 
     protected String mailToJSON(String to, String subject, String text) {

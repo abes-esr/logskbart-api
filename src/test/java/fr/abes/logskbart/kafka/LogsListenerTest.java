@@ -1,6 +1,7 @@
 package fr.abes.logskbart.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.abes.logskbart.service.BadReportResult;
 import fr.abes.logskbart.service.BadReportService;
 import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.service.LogsService;
@@ -16,10 +17,14 @@ import java.util.Map;
 import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class LogsListenerTest {
 
     private LogsListener logsListener;
+    private EmailService emailService;
 
     @TempDir
     Path tempDir;
@@ -30,6 +35,7 @@ class LogsListenerTest {
     void setUp() throws Exception {
         tempLogDir = tempDir;
         Files.createDirectories(tempLogDir.resolve("bad"));
+        emailService = mock(EmailService.class);
 
         // Create the instance with null/mock dependencies - only extractField and appendToCandidatsDoublons are tested
         logsListener = new LogsListener(
@@ -38,9 +44,34 @@ class LogsListenerTest {
                 null, // LogsService - not used in tested methods
                 Map.of(),
                 null, // Executor - not used in tested methods
-                null, // EmailService - not used in tested methods
+                emailService,
                 new BadReportService(tempLogDir.toString())
         );
+    }
+
+    @Test
+    @DisplayName("Aucun email immédiat n'est envoyé pour des erreurs 400 seules")
+    void doesNotSendImmediateEmailFor400Only() throws IOException {
+        logsListener.notifyReports(
+                "TEST_PROVIDER_PACKAGE_2025-11-02.tsv",
+                new BadReportResult(true, false)
+        );
+
+        verifyNoInteractions(emailService);
+    }
+
+    @Test
+    @DisplayName("Les autres erreurs déclenchent immédiatement leurs emails")
+    void sendsImmediateEmailsForOtherErrors() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2025-11-02.tsv";
+        Path otherReport = tempLogDir.resolve("bad/TEST_PROVIDER_PACKAGE_2025-11-02_other.bad");
+        Files.writeString(otherReport, "LINE\tMESSAGE\t\n"
+                + "1\tDoublon (123456789) [ publication title : Titre ]\n");
+
+        logsListener.notifyReports(filename, new BadReportResult(false, true));
+
+        verify(emailService).sendOtherErrorsEmail(filename);
+        verify(emailService).sendCandidatsDoublonsEmail(filename);
     }
 
     @AfterEach

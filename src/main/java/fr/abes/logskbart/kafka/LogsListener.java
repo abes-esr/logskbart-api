@@ -96,11 +96,7 @@ public class LogsListener {
             if (!packageName.contains("_FORCE") || this.workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
                     (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
             )) {
-                BadReportResult reports = createFileBad(packageName);
-                if (reports.hasOtherErrors()) {
-                    appendToCandidatsDoublons(packageName);
-                    emailService.sendCandidatsDoublonsEmail(packageName);
-                }
+                notifyReports(packageName, createFileBad(packageName));
             }
             this.workInProgressMap.remove(packageName);
         }
@@ -137,6 +133,16 @@ public class LogsListener {
         }
 
         return result;
+    }
+
+    void notifyReports(String filename, BadReportResult reports) throws IOException {
+        if (!reports.hasOtherErrors()) {
+            return;
+        }
+
+        emailService.sendOtherErrorsEmail(filename);
+        appendToCandidatsDoublons(filename);
+        emailService.sendCandidatsDoublonsEmail(filename);
     }
 
     /**
