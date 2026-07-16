@@ -74,8 +74,8 @@ public class EmailService {
     }
 
     public void sendCandidatsDoublonsEmail(String packageName) {
-        //  Création du mail avec lien vers le fichier CandidatsDoublons.txt
-        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : Candidats Doublons]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + "CandidatsDoublons.txt" + "\" target=\"_blank\">Cliquez pour télécharger le fichier CandidatsDoublons.txt</a>");
+        //  Création du mail avec lien vers le fichier CandidatsDoublons.xlsx
+        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : Candidats Doublons]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + "CandidatsDoublons.xlsx" + "\" target=\"_blank\">Cliquez pour télécharger le fichier CandidatsDoublons.xlsx</a>");
 
         //  Envoi du message par mail
         sendMail(requestJson);
