@@ -1,6 +1,7 @@
 package fr.abes.logskbart.kafka;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.abes.logskbart.service.BadReportService;
 import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
@@ -27,6 +28,9 @@ class LogsListenerTest {
 
     @BeforeEach
     void setUp() throws Exception {
+        tempLogDir = tempDir;
+        Files.createDirectories(tempLogDir.resolve("bad"));
+
         // Create the instance with null/mock dependencies - only extractField and appendToCandidatsDoublons are tested
         logsListener = new LogsListener(
                 new ObjectMapper(),
@@ -34,25 +38,21 @@ class LogsListenerTest {
                 null, // LogsService - not used in tested methods
                 Map.of(),
                 null, // Executor - not used in tested methods
-                null  // EmailService - not used in tested methods
+                null, // EmailService - not used in tested methods
+                new BadReportService(tempLogDir.toString())
         );
-
-        // Create tempLog directory in the working directory for appendToCandidatsDoublons tests
-        tempLogDir = Path.of("tempLog");
-        if (!Files.exists(tempLogDir)) {
-            Files.createDirectory(tempLogDir);
-        }
     }
 
     @AfterEach
     void tearDown() throws IOException {
         // Clean up test files
-        Path candidatsDoublons = Path.of("tempLog", "CandidatsDoublons.txt");
+        Path candidatsDoublons = tempLogDir.resolve("CandidatsDoublons.txt");
         Files.deleteIfExists(candidatsDoublons);
-        Path badFile = Path.of("tempLog", "TEST_PROVIDER_PACKAGE_2025-11-02.bad");
+        Path badFile = tempLogDir.resolve("bad/TEST_PROVIDER_PACKAGE_2025-11-02_other.bad");
         Files.deleteIfExists(badFile);
-        Path badFileForce = Path.of("tempLog", "TEST_PROVIDER_PACKAGE_2025-11-02_FORCE.bad");
+        Path badFileForce = tempLogDir.resolve("bad/TEST_PROVIDER_PACKAGE_2025-11-02_FORCE_other.bad");
         Files.deleteIfExists(badFileForce);
+        Files.deleteIfExists(tempLogDir.resolve("bad/TEST_PROVIDER_OTHER_2025-11-03_other.bad"));
     }
 
     @Test
@@ -134,14 +134,14 @@ class LogsListenerTest {
     void testAppendToCandidatsDoublonsCreation() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2025-11-02.tsv";
         // Create a .bad file with test content
-        Path badFile = Path.of("tempLog", filename.replace(".tsv", ".bad"));
+        Path badFile = tempLogDir.resolve("bad/" + filename.replace(".tsv", "_other.bad"));
         String badContent = "LINE\tMESSAGE\t\n" +
                 "1615\tPlusieurs ppn électroniques (290245540 OU 289331811) ont le même score. [ publication title : Petite Histoire / publication_type : monograph / online_identifier : 9782200626297 / print_identifier : 9782200622572 ]\n";
         Files.write(badFile, badContent.getBytes());
 
         logsListener.appendToCandidatsDoublons(filename);
 
-        Path candidatsDoublons = Path.of("tempLog", "CandidatsDoublons.txt");
+        Path candidatsDoublons = tempLogDir.resolve("CandidatsDoublons.txt");
         assertTrue(Files.exists(candidatsDoublons));
 
         List<String> lines = Files.readAllLines(candidatsDoublons);
@@ -163,7 +163,7 @@ class LogsListenerTest {
     void testAppendToCandidatsDoublonsAppend() throws IOException {
         // First call creates the file
         String filename1 = "TEST_PROVIDER_PACKAGE_2025-11-02.tsv";
-        Path badFile1 = Path.of("tempLog", filename1.replace(".tsv", ".bad"));
+        Path badFile1 = tempLogDir.resolve("bad/" + filename1.replace(".tsv", "_other.bad"));
         String badContent1 = "LINE\tMESSAGE\t\n" +
                 "1615\tPlusieurs ppn électroniques (290245540) [ publication title : Titre1 / publication_type : monograph / online_identifier : 111 / print_identifier : 222 ]\n";
         Files.write(badFile1, badContent1.getBytes());
@@ -172,13 +172,13 @@ class LogsListenerTest {
 
         // Second call appends to the existing file
         String filename2 = "TEST_PROVIDER_OTHER_2025-11-03.tsv";
-        Path badFile2 = Path.of("tempLog", filename2.replace(".tsv", ".bad"));
+        Path badFile2 = tempLogDir.resolve("bad/" + filename2.replace(".tsv", "_other.bad"));
         String badContent2 = "LINE\tMESSAGE\t\n" +
                 "42\tPlusieurs ppn imprimés (123456789) [ publication title : Titre2 / publication_type : serial / online_identifier : 333 / print_identifier : 444 ]\n";
         Files.write(badFile2, badContent2.getBytes());
         logsListener.appendToCandidatsDoublons(filename2);
 
-        Path candidatsDoublons = Path.of("tempLog", "CandidatsDoublons.txt");
+        Path candidatsDoublons = tempLogDir.resolve("CandidatsDoublons.txt");
         assertTrue(Files.exists(candidatsDoublons));
 
         List<String> lines = Files.readAllLines(candidatsDoublons);
@@ -195,7 +195,7 @@ class LogsListenerTest {
     @DisplayName("Test appendToCandidatsDoublons : lignes sans format structure sont ignorees")
     void testAppendToCandidatsDoublonsSkipNonStructuredLines() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2025-11-02.tsv";
-        Path badFile = Path.of("tempLog", filename.replace(".tsv", ".bad"));
+        Path badFile = tempLogDir.resolve("bad/" + filename.replace(".tsv", "_other.bad"));
         String badContent = "LINE\tMESSAGE\t\n" +
                 "1\tErreur de connexion CBS\n" +
                 "2\tFormat du fichier incorrect\n" +
@@ -204,7 +204,7 @@ class LogsListenerTest {
 
         logsListener.appendToCandidatsDoublons(filename);
 
-        Path candidatsDoublons = Path.of("tempLog", "CandidatsDoublons.txt");
+        Path candidatsDoublons = tempLogDir.resolve("CandidatsDoublons.txt");
         assertTrue(Files.exists(candidatsDoublons));
 
         List<String> lines = Files.readAllLines(candidatsDoublons);
@@ -219,14 +219,14 @@ class LogsListenerTest {
     @DisplayName("Test appendToCandidatsDoublons : fichier .bad avec suffixe _FORCE")
     void testAppendToCandidatsDoublonsWithForceSuffix() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2025-11-02_FORCE.tsv";
-        Path badFile = Path.of("tempLog", filename.replace(".tsv", ".bad"));
+        Path badFile = tempLogDir.resolve("bad/" + filename.replace(".tsv", "_other.bad"));
         String badContent = "LINE\tMESSAGE\t\n" +
                 "1\tPlusieurs ppn électroniques (290245540) [ publication title : TitreForce / publication_type : monograph / online_identifier : 111 / print_identifier : 222 ]\n";
         Files.write(badFile, badContent.getBytes());
 
         logsListener.appendToCandidatsDoublons(filename);
 
-        Path candidatsDoublons = Path.of("tempLog", "CandidatsDoublons.txt");
+        Path candidatsDoublons = tempLogDir.resolve("CandidatsDoublons.txt");
         assertTrue(Files.exists(candidatsDoublons));
 
         List<String> lines = Files.readAllLines(candidatsDoublons);
@@ -243,7 +243,7 @@ class LogsListenerTest {
 
         logsListener.appendToCandidatsDoublons(filename);
 
-        Path candidatsDoublons = Path.of("tempLog", "CandidatsDoublons.txt");
+        Path candidatsDoublons = tempLogDir.resolve("CandidatsDoublons.txt");
         assertFalse(Files.exists(candidatsDoublons));
     }
 }
