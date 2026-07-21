@@ -5,13 +5,19 @@ import fr.abes.logskbart.service.BadReportResult;
 import fr.abes.logskbart.service.BadReportService;
 import fr.abes.logskbart.service.CandidatsDoublonsService;
 import fr.abes.logskbart.service.EmailService;
+import fr.abes.logskbart.service.LogsService;
+import fr.abes.logskbart.utils.UtilsMapper;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 
 import static org.mockito.Mockito.*;
@@ -77,5 +83,43 @@ class LogsListenerTest {
         verify(emailService).sendOtherErrorsEmail(filename);
         verify(candidatsDoublonsService).append(filename);
         verify(emailService, never()).sendCandidatsDoublonsEmail(anyString());
+    }
+
+    @Test
+    @DisplayName("Un fichier FORCE produit les rapports des autres erreurs")
+    void forceFileProducesOtherErrorsReports() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2025-11-02_FORCE.tsv";
+        LogsService logsService = mock(LogsService.class);
+        when(candidatsDoublonsService.append(filename)).thenReturn(true);
+
+        logsListener = new LogsListener(
+                new ObjectMapper(),
+                new UtilsMapper(),
+                logsService,
+                new HashMap<>(),
+                Runnable::run,
+                emailService,
+                new BadReportService(tempLogDir.toString()),
+                candidatsDoublonsService
+        );
+        ReflectionTestUtils.setField(logsListener, "maxPacketSize", 1000);
+
+        String duplicateError = "Plusieurs ppn électroniques (040651479 OU 040651525) ont le même score. "
+                + "[ publication title : Journal Test Doublon SOA-503 ]";
+        logsListener.listenInfoKbart2KafkaAndErrorKbart2Kafka(new ConsumerRecord<>(
+                "logs", 0, 0L, filename + ";1",
+                "{\"level\":\"ERROR\",\"message\":\"" + duplicateError + "\"}"
+        ));
+        logsListener.listenInfoKbart2KafkaAndErrorKbart2Kafka(new ConsumerRecord<>(
+                "logs", 0, 1L, filename,
+                "{\"level\":\"INFO\",\"message\":\"Traitement terminé pour fichier " + filename + "\"}"
+        ));
+
+        Path otherReport = tempLogDir.resolve("bad")
+                .resolve("TEST_PROVIDER_PACKAGE_2025-11-02_FORCE_other.bad");
+        org.junit.jupiter.api.Assertions.assertTrue(Files.exists(otherReport));
+        verify(emailService).sendOtherErrorsEmail(filename);
+        verify(candidatsDoublonsService).append(filename);
+        verify(emailService).sendCandidatsDoublonsEmail(filename);
     }
 }

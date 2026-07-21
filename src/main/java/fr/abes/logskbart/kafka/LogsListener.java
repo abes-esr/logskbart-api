@@ -93,11 +93,7 @@ public class LogsListener {
 
         if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
             saveDatas(this.workInProgressMap.get(packageName).getMessages());
-            if (!packageName.contains("_FORCE") || this.workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
-                    (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
-            )) {
-                notifyReports(packageName, createFileBad(packageName));
-            }
+            notifyReports(packageName, createFileBad(packageName));
             this.workInProgressMap.remove(packageName);
         }
     }
