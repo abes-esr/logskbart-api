@@ -144,6 +144,13 @@
             <version>2.3.0</version>
         </dependency>
 
+        <!-- Génération des rapports XLSX -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>5.2.5</version>
+        </dependency>
+
         <!-- TEST -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
