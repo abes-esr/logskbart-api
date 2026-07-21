@@ -3,6 +3,9 @@ package fr.abes.logskbart.kafka;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import fr.abes.logskbart.dto.LogKbartDto;
 import fr.abes.logskbart.entity.LogKbart;
+import fr.abes.logskbart.service.BadReportResult;
+import fr.abes.logskbart.service.BadReportService;
+import fr.abes.logskbart.service.CandidatsDoublonsService;
 import fr.abes.logskbart.service.EmailService;
 import fr.abes.logskbart.service.LogsService;
 import fr.abes.logskbart.utils.UtilsMapper;
@@ -12,19 +15,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.sql.Timestamp;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -47,14 +43,18 @@ public class LogsListener {
     private final Map<String, WorkInProgress> workInProgressMap;
 
     private final Executor executor;
+    private final BadReportService badReportService;
+    private final CandidatsDoublonsService candidatsDoublonsService;
 
-    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, Map<String, WorkInProgress> workInProgressMap, Executor executor, EmailService emailService) {
+    public LogsListener(ObjectMapper mapper, UtilsMapper logsMapper, LogsService service, Map<String, WorkInProgress> workInProgressMap, Executor executor, EmailService emailService, BadReportService badReportService, CandidatsDoublonsService candidatsDoublonsService) {
         this.mapper = mapper;
         this.logsMapper = logsMapper;
         this.service = service;
         this.workInProgressMap = workInProgressMap;
         this.executor = executor;
         this.emailService = emailService;
+        this.badReportService = badReportService;
+        this.candidatsDoublonsService = candidatsDoublonsService;
     }
 
 
@@ -93,13 +93,7 @@ public class LogsListener {
 
         if ((dto.getMessage().contains("Traitement terminé pour fichier " + packageName)) || (dto.getMessage().contains("Traitement refusé du fichier " + packageName))) {
             saveDatas(this.workInProgressMap.get(packageName).getMessages());
-            if (!packageName.contains("_FORCE") || this.workInProgressMap.get(packageName).getMessages().stream().anyMatch(log ->
-                    (log.getNbLine() == -1) && log.getMessage().contains("Format du fichier incorrect")
-            )) {
-                if (createFileBad(packageName)) {
-                    emailService.sendEmail(packageName);
-                }
-            }
+            notifyReports(packageName, createFileBad(packageName));
             this.workInProgressMap.remove(packageName);
         }
     }
@@ -122,78 +116,29 @@ public class LogsListener {
                 }));
     }
 
-    private void deleteOldLocalTempLog() throws IOException {
-        File dirToCheck = new File("tempLogLocal");
-        File[] listeFilesTempLogLocal = dirToCheck.listFiles();
-        if (listeFilesTempLogLocal != null) {
-            for (File fileToCheck : listeFilesTempLogLocal) {
-                BasicFileAttributes basicFileAttributes = Files.readAttributes(fileToCheck.toPath(), BasicFileAttributes.class);
-                if (basicFileAttributes.isRegularFile()) {
-                    String nameFile = String.valueOf(fileToCheck);
-                    Date dateOfLastModification = new Date(basicFileAttributes.lastModifiedTime().toMillis());
-                    Date dateNow = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
-                    long interval = dateNow.getTime() - dateOfLastModification.getTime();
-                    if (interval > 600000 && Files.deleteIfExists(fileToCheck.toPath())) {
-                        log.debug("Fichier obsolète supprimé : {}", nameFile);
-                    }
-                }
-            }
+    private BadReportResult createFileBad(String filename) throws IOException {
+        BadReportResult result = badReportService.writeReports(
+                filename,
+                workInProgressMap.get(filename).getMessages()
+        );
+
+        if (result.has400Errors() || result.hasOtherErrors()) {
+            Path logFile = badReportService.reportDirectory().resolve(filename.replace(".tsv", ".log"));
+            log.info("Suppression de {}", logFile);
+            Files.deleteIfExists(logFile);
         }
+
+        return result;
     }
 
-    private boolean createFileBad(String filename) throws IOException {
-        log.debug("Entrée dans createFileBad : {}", filename);
-        List<LogKbart> logskbartList = workInProgressMap.get(filename).getMessages().stream().filter(message -> message.getLevel().equals("ERROR")).sorted().toList();
-        log.debug("Taille liste : {}", logskbartList.size());
-        //List<LogKbart> logKbartList = service.getErrorLogKbartByPackageAndNbRun(filename, nbRun);
-        Path tempPath = Path.of("tempLogLocal");
-        if (!Files.exists(tempPath)) {
-            Files.createDirectory(tempPath);
+    void notifyReports(String filename, BadReportResult reports) throws IOException {
+        if (!reports.hasOtherErrors()) {
+            return;
         }
-        Path pathOfBadLocal = Path.of("tempLogLocal", filename.replace(".tsv", ".bad"));
-        // vérifie la présence de fichiers obsolètes dans le répertoire tempLogLocal et les supprime le cas échéant
-        deleteOldLocalTempLog();
 
-        logskbartList.forEach(logKbart -> {
-            try {
-                if (Files.exists(pathOfBadLocal)) {
-                    //  Inscrit la ligne dedans
-                    Files.write(pathOfBadLocal, (logKbart.getNbLine() + "\t" + logKbart.getMessage() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                } else {
-                    //  Créer le fichier et inscrit la ligne dedans
-                    Files.createFile(pathOfBadLocal);
-                    //  Créer la ligne d'en-tête
-                    Files.write(pathOfBadLocal, ("LINE\tMESSAGE\t" + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                    //  Inscrit les informations sur la ligne
-                    Files.write(pathOfBadLocal, (logKbart.getNbLine() + "\t" + logKbart.getMessage() + System.lineSeparator()).getBytes(), StandardOpenOption.APPEND);
-                    log.info("Fichier temporaire créé.");
-                }
-            } catch (IOException e) {
-                log.error("Erreur lors de la création du fichier temporaire. {}", e.getMessage());
-                throw new RuntimeException(e);
-            }
-        });
-
-        if (Files.exists(pathOfBadLocal)) {
-            Path tempPathTarget = Path.of("tempLog");
-            if (!Files.exists(tempPathTarget)) {
-                Files.createDirectory(tempPathTarget);
-            }
-            //  Copie le fichier existant vers le répertoire temporaire
-            Path pathOfBadFinal = Path.of("tempLog", filename.replace(".tsv", ".bad"));
-            //  Déplacement du fichier
-            Files.move(pathOfBadLocal, pathOfBadFinal, StandardCopyOption.REPLACE_EXISTING);
-            log.info("Fichier de log transféré dans le dossier temporaire.");
-
-            // Suppression du .log car Useless si cas là
-            Path pathOfLog = Path.of("tempLog", filename.replace(".tsv", ".log"));
-            log.info("Suppression de {}", pathOfLog);
-            Files.deleteIfExists(pathOfLog);
-
-            log.info("Suppression de {} en local", pathOfBadLocal);
-            Files.deleteIfExists(pathOfBadLocal);
-            return true;
+        emailService.sendOtherErrorsEmail(filename);
+        if (candidatsDoublonsService.append(filename)) {
+            emailService.sendCandidatsDoublonsEmail(filename);
         }
-        return false;
     }
 }
