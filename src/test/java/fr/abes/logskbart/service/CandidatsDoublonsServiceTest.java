@@ -15,6 +15,8 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -153,6 +155,76 @@ class CandidatsDoublonsServiceTest {
             assertTrue(sheet.getColumnWidth(2) >= 40 * 256);
             IntStream.range(0, HEADERS.size())
                     .forEach(index -> assertTrue(sheet.getColumnWidth(index) <= 60 * 256));
+        }
+    }
+
+    @Test
+    void doesNotAppendCandidateAlreadyPresentAndDoesNotRewriteWorkbook() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
+        String candidate = "1\tDoublon (111111111) [ publication title : Titre 1 "
+                + "/ publication_type : serial / online_identifier : 1111-1111 "
+                + "/ print_identifier : 2222-2222 ]";
+        writeOtherReport(filename, candidate);
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+
+        assertTrue(service.append(filename));
+        FileTime marker = FileTime.from(Instant.parse("2020-01-01T00:00:00Z"));
+        Files.setLastModifiedTime(service.workbookPath(), marker);
+
+        assertFalse(service.append(filename));
+        assertEquals(marker, Files.getLastModifiedTime(service.workbookPath()));
+        assertFalse(Files.exists(service.workbookPath().resolveSibling("CandidatsDoublons.xlsx.tmp")));
+        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+            assertEquals(1, workbook.getSheetAt(0).getLastRowNum());
+        }
+    }
+
+    @Test
+    void appendsOnlyOnceWhenReportContainsTheSameCandidateTwice() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
+        String candidate = "1\tDoublon (111111111) [ publication title : Titre 1 "
+                + "/ publication_type : serial / online_identifier : 1111-1111 "
+                + "/ print_identifier : 2222-2222 ]";
+        Files.writeString(
+                badReportService.otherReportPath(filename),
+                "LINE\tMESSAGE\t" + System.lineSeparator()
+                        + candidate + System.lineSeparator()
+                        + candidate + System.lineSeparator()
+        );
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+
+        assertTrue(service.append(filename));
+        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+            assertEquals(1, workbook.getSheetAt(0).getLastRowNum());
+        }
+    }
+
+    @Test
+    void appendsOnlyNewCandidatesWhenWorkbookContainsExistingRows() throws IOException {
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+        writeOtherReport("SAME.tsv",
+                "1\tDoublon (111111111) [ publication title : Existant "
+                        + "/ publication_type : serial / online_identifier : 1111-1111 "
+                        + "/ print_identifier : 2222-2222 ]");
+        assertTrue(service.append("SAME.tsv"));
+
+        Files.writeString(
+                badReportService.otherReportPath("SAME.tsv"),
+                "LINE\tMESSAGE\t" + System.lineSeparator()
+                        + "1\tDoublon (111111111) [ publication title : Existant "
+                        + "/ publication_type : serial / online_identifier : 1111-1111 "
+                        + "/ print_identifier : 2222-2222 ]" + System.lineSeparator()
+                        + "2\tDoublon (222222222) [ publication title : Nouveau "
+                        + "/ publication_type : monograph / online_identifier : 3333-3333 "
+                        + "/ print_identifier : 4444-4444 ]" + System.lineSeparator()
+        );
+
+        assertTrue(service.append("SAME.tsv"));
+        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            assertEquals(2, sheet.getLastRowNum());
+            assertEquals("111111111", sheet.getRow(1).getCell(0).getStringCellValue());
+            assertEquals("222222222", sheet.getRow(2).getCell(0).getStringCellValue());
         }
     }
 
