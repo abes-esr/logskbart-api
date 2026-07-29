@@ -2,6 +2,7 @@ package fr.abes.logskbart.service;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.FillPatternType;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.IndexedColors;
@@ -22,9 +23,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.IntStream;
 
 @Slf4j
 @Service
@@ -56,7 +60,23 @@ public class CandidatsDoublonsService {
             return false;
         }
 
-        Path temporaryPath = temporaryWorkbookPath();
+        Set<List<String>> knownKeys = new HashSet<>();
+        if (Files.exists(workbookPath())) {
+            try (Workbook workbook = WorkbookFactory.create(workbookPath().toFile(), null, true)) {
+                Sheet sheet = workbook.getSheet(SHEET_NAME);
+                if (sheet != null) {
+                    knownKeys.addAll(existingCandidateKeys(sheet));
+                }
+            }
+        }
+        List<CandidatDoublon> newCandidates = candidates.stream()
+                .filter(candidate -> knownKeys.add(normalizedKey(candidate.values())))
+                .toList();
+        if (newCandidates.isEmpty()) {
+            return false;
+        }
+
+        Path temporaryPath;
         try (Workbook workbook = openWorkbook()) {
             Sheet sheet = workbook.getSheet(SHEET_NAME);
             if (sheet == null) {
@@ -65,15 +85,17 @@ public class CandidatsDoublonsService {
 
             CellStyle textStyle = textStyle(workbook);
             int rowIndex = sheet.getLastRowNum() + 1;
-            for (CandidatDoublon candidate : candidates) {
+            for (CandidatDoublon candidate : newCandidates) {
                 writeRow(sheet.createRow(rowIndex++), candidate.values(), textStyle);
             }
             updateAutoFilter(sheet);
+            temporaryPath = temporaryWorkbookPath();
             writeTemporary(workbook, temporaryPath);
         }
         replaceWorkbook(temporaryPath);
 
-        log.info("Candidats ajoutés dans {} pour le fichier {}", workbookPath(), filename);
+        log.info("{} nouveau(x) candidat(s) ajouté(s) dans {} pour le fichier {}",
+                newCandidates.size(), workbookPath(), filename);
         return true;
     }
 
@@ -183,6 +205,26 @@ public class CandidatsDoublonsService {
             xssfSheet.getCTWorksheet().unsetAutoFilter();
         }
         sheet.setAutoFilter(new CellRangeAddress(0, sheet.getLastRowNum(), 0, HEADERS.size() - 1));
+    }
+
+    private Set<List<String>> existingCandidateKeys(Sheet sheet) {
+        DataFormatter formatter = new DataFormatter();
+        Set<List<String>> keys = new HashSet<>();
+        IntStream.rangeClosed(1, sheet.getLastRowNum())
+                .mapToObj(sheet::getRow)
+                .filter(row -> row != null)
+                .map(row -> IntStream.range(0, HEADERS.size())
+                        .mapToObj(index -> formatter.formatCellValue(row.getCell(index)))
+                        .toList())
+                .map(this::normalizedKey)
+                .forEach(keys::add);
+        return keys;
+    }
+
+    private List<String> normalizedKey(List<String> values) {
+        return values.stream()
+                .map(value -> value == null ? "" : value.trim())
+                .toList();
     }
 
     private Path temporaryWorkbookPath() throws IOException {
