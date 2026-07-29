@@ -8,15 +8,19 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
@@ -228,11 +232,101 @@ class CandidatsDoublonsServiceTest {
         }
     }
 
+    @Test
+    void treatsMissingEmptyAndSpacePaddedCellsAsTheSameNormalizedCandidate() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+        writeExistingCandidateWorkbook(service, List.of(
+                " 111111111 ",
+                " che ppn 111111111 ",
+                " Titre 1 ",
+                "",
+                "",
+                "",
+                " TEST_PROVIDER_PACKAGE_2026-07-16 ",
+                " Doublon "
+        ), 3);
+        writeOtherReport(filename,
+                "1\tDoublon (111111111) [ publication title : Titre 1 ]");
+        FileTime marker = FileTime.from(Instant.parse("2020-01-01T00:00:00Z"));
+        Files.setLastModifiedTime(service.workbookPath(), marker);
+
+        assertFalse(service.append(filename));
+        assertEquals(marker, Files.getLastModifiedTime(service.workbookPath()));
+        assertFalse(Files.exists(service.workbookPath().resolveSibling("CandidatsDoublons.xlsx.tmp")));
+    }
+
+    @Test
+    void appendsCandidateWhenAValueDiffersOnlyByCase() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+        writeOtherReport(filename,
+                "1\tDoublon (111111111) [ publication title : Titre 1 ]");
+        assertTrue(service.append(filename));
+
+        writeOtherReport(filename,
+                "1\tDoublon (111111111) [ publication title : titre 1 ]");
+
+        assertTrue(service.append(filename));
+        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            assertEquals(2, sheet.getLastRowNum());
+            assertEquals("Titre 1", sheet.getRow(1).getCell(2).getStringCellValue());
+            assertEquals("titre 1", sheet.getRow(2).getCell(2).getStringCellValue());
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 2, 3, 4, 5, 6, 7})
+    void appendsCandidateWhenAnyOfTheEightKeyColumnsDiffers(int differentColumn) throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+        List<String> existingValues = new ArrayList<>(List.of(
+                "111111111",
+                "che ppn 111111111",
+                "Titre 1",
+                "serial",
+                "2222-2222",
+                "1111-1111",
+                "TEST_PROVIDER_PACKAGE_2026-07-16",
+                "Doublon"
+        ));
+        existingValues.set(differentColumn, "valeur différente");
+        writeExistingCandidateWorkbook(service, existingValues, -1);
+        writeOtherReport(filename,
+                "1\tDoublon (111111111) [ publication title : Titre 1 "
+                        + "/ publication_type : serial / online_identifier : 1111-1111 "
+                        + "/ print_identifier : 2222-2222 ]");
+
+        assertTrue(service.append(filename));
+        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+            assertEquals(2, workbook.getSheetAt(0).getLastRowNum());
+        }
+    }
+
     private void writeOtherReport(String filename, String line) throws IOException {
         Files.writeString(
                 badReportService.otherReportPath(filename),
                 "LINE\tMESSAGE\t" + System.lineSeparator() + line + System.lineSeparator()
         );
+    }
+
+    private void writeExistingCandidateWorkbook(CandidatsDoublonsService service,
+                                                List<String> existingValues,
+                                                int missingCellIndex) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("CandidatsDoublons");
+            Row header = sheet.createRow(0);
+            IntStream.range(0, HEADERS.size())
+                    .forEach(index -> header.createCell(index).setCellValue(HEADERS.get(index)));
+            Row existingRow = sheet.createRow(1);
+            IntStream.range(0, existingValues.size())
+                    .filter(index -> index != missingCellIndex)
+                    .forEach(index -> existingRow.createCell(index).setCellValue(existingValues.get(index)));
+            try (var output = Files.newOutputStream(service.workbookPath())) {
+                workbook.write(output);
+            }
+        }
     }
 
     private List<String> values(Row row) {
