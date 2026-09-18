@@ -73,16 +73,6 @@ public class EmailService {
         return sent;
     }
 
-    public void sendCandidatsDoublonsEmail(String packageName) {
-        //  Création du mail avec lien vers le fichier CandidatsDoublons.xlsx
-        String requestJson = mailToJSON(this.recipient, "[KBART2BACON : Candidats Doublons]" + getTag() + " " + packageName, "<a href=\"" + serveurUrl + "CandidatsDoublons.xlsx" + "\" target=\"_blank\">Cliquez pour télécharger le fichier CandidatsDoublons.xlsx</a>");
-
-        //  Envoi du message par mail
-        sendMail(requestJson);
-
-        log.info("L'email CandidatsDoublons a été correctement envoyé à " + recipient);
-    }
-
     protected boolean sendMail(String requestJson) {
         RestTemplate restTemplate = new RestTemplate(); //appel ws qui envoie le mail
         HttpHeaders headers = new HttpHeaders();

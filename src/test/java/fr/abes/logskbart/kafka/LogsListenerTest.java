@@ -60,8 +60,8 @@ class LogsListenerTest {
     }
 
     @Test
-    @DisplayName("Les autres erreurs déclenchent les emails immédiats si des candidats sont exportés")
-    void sendsImmediateEmailsForOtherErrorsAndCandidates() throws IOException {
+    @DisplayName("Les candidats sont exportés sans déclencher d'email dédié")
+    void exportsCandidatesWithoutSendingDedicatedEmail() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2025-11-02.tsv";
         when(candidatsDoublonsService.append(filename)).thenReturn(true);
 
@@ -69,7 +69,7 @@ class LogsListenerTest {
 
         verify(emailService).sendOtherErrorsEmail(filename);
         verify(candidatsDoublonsService).append(filename);
-        verify(emailService).sendCandidatsDoublonsEmail(filename);
+        verifyNoMoreInteractions(emailService);
     }
 
     @Test
@@ -82,7 +82,7 @@ class LogsListenerTest {
 
         verify(emailService).sendOtherErrorsEmail(filename);
         verify(candidatsDoublonsService).append(filename);
-        verify(emailService, never()).sendCandidatsDoublonsEmail(anyString());
+        verifyNoMoreInteractions(emailService);
     }
 
     @Test
@@ -120,6 +120,6 @@ class LogsListenerTest {
         org.junit.jupiter.api.Assertions.assertTrue(Files.exists(otherReport));
         verify(emailService).sendOtherErrorsEmail(filename);
         verify(candidatsDoublonsService).append(filename);
-        verify(emailService).sendCandidatsDoublonsEmail(filename);
+        verifyNoMoreInteractions(emailService);
     }
 }

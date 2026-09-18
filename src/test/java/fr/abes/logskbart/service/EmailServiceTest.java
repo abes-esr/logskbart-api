@@ -32,15 +32,6 @@ class EmailServiceTest {
     }
 
     @Test
-    void sendsAnImmediateLinkToTheCandidatesWorkbook() {
-        service.sendCandidatsDoublonsEmail("TEST_PACKAGE.tsv");
-
-        assertEquals(1, service.sendCount);
-        assertTrue(service.requestJson.contains("CandidatsDoublons.xlsx"));
-        assertFalse(service.requestJson.contains("CandidatsDoublons.txt"));
-    }
-
-    @Test
     void sendsOneDailyEmailWithEvery400ReportSortedByName() {
         boolean sent = service.sendDailyRecapEmail(List.of("B_400.bad", "A_400.bad"));
 
