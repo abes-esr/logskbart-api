@@ -35,7 +35,8 @@ import java.util.stream.IntStream;
 public class CandidatsDoublonsService {
 
     private static final String SHEET_NAME = "CandidatsDoublons";
-    private static final String WORKBOOK_FILENAME = "CandidatsDoublons.xlsx";
+    private static final String ELECTRONIC_SUFFIX = "candidats_electroniques";
+    private static final String PRINTED_SUFFIX = "candidats_imprimes";
     private static final int[] COLUMN_WIDTHS = {22, 32, 60, 24, 20, 20, 40, 50};
     private static final List<String> HEADERS = List.of(
             "PPN",
@@ -60,9 +61,32 @@ public class CandidatsDoublonsService {
             return false;
         }
 
+        boolean electronicAppended = append(
+                electronicWorkbookPath(filename),
+                candidates.stream()
+                        .filter(candidate -> candidate.type() == CandidateType.ELECTRONIC)
+                        .toList(),
+                filename);
+        boolean printedAppended = append(
+                printedWorkbookPath(filename),
+                candidates.stream()
+                        .filter(candidate -> candidate.type() == CandidateType.PRINTED)
+                        .toList(),
+                filename);
+        return electronicAppended || printedAppended;
+    }
+
+    private boolean append(
+            Path workbookPath,
+            List<CandidatDoublon> candidates,
+            String filename) throws IOException {
+        if (candidates.isEmpty()) {
+            return false;
+        }
+
         Set<List<String>> knownKeys = new HashSet<>();
-        if (Files.exists(workbookPath())) {
-            try (Workbook workbook = WorkbookFactory.create(workbookPath().toFile(), null, true)) {
+        if (Files.exists(workbookPath)) {
+            try (Workbook workbook = WorkbookFactory.create(workbookPath.toFile(), null, true)) {
                 Sheet sheet = workbook.getSheet(SHEET_NAME);
                 if (sheet != null) {
                     knownKeys.addAll(existingCandidateKeys(sheet));
@@ -77,7 +101,7 @@ public class CandidatsDoublonsService {
         }
 
         Path temporaryPath;
-        try (Workbook workbook = openWorkbook()) {
+        try (Workbook workbook = openWorkbook(workbookPath)) {
             Sheet sheet = workbook.getSheet(SHEET_NAME);
             if (sheet == null) {
                 sheet = createSheet(workbook);
@@ -89,18 +113,29 @@ public class CandidatsDoublonsService {
                 writeRow(sheet.createRow(rowIndex++), candidate.values(), textStyle);
             }
             updateAutoFilter(sheet);
-            temporaryPath = temporaryWorkbookPath();
+            temporaryPath = temporaryWorkbookPath(workbookPath);
             writeTemporary(workbook, temporaryPath);
         }
-        replaceWorkbook(temporaryPath);
+        replaceWorkbook(temporaryPath, workbookPath);
 
         log.info("{} nouveau(x) candidat(s) ajouté(s) dans {} pour le fichier {}",
-                newCandidates.size(), workbookPath(), filename);
+                newCandidates.size(), workbookPath, filename);
         return true;
     }
 
-    public Path workbookPath() {
-        return badReportService.reportDirectory().resolve(WORKBOOK_FILENAME);
+    public Path electronicWorkbookPath(String filename) {
+        return candidateWorkbookPath(filename, ELECTRONIC_SUFFIX);
+    }
+
+    public Path printedWorkbookPath(String filename) {
+        return candidateWorkbookPath(filename, PRINTED_SUFFIX);
+    }
+
+    private Path candidateWorkbookPath(String filename, String suffix) {
+        Path otherReport = badReportService.otherReportPath(filename);
+        String workbookName = otherReport.getFileName().toString()
+                .replaceFirst("(?i)_other\\.bad$", "_" + suffix + ".xlsx");
+        return otherReport.resolveSibling(workbookName);
     }
 
     private List<CandidatDoublon> readCandidates(String filename) throws IOException {
@@ -121,8 +156,13 @@ public class CandidatsDoublonsService {
             }
 
             String message = parts[1];
+            CandidateType type = CandidateType.from(message);
+            if (type == null) {
+                continue;
+            }
             String ppn = extract(message, "\\(([^)]+)\\)");
             candidates.add(new CandidatDoublon(
+                    type,
                     value(ppn),
                     ppn == null ? "" : "che ppn " + ppn,
                     value(extract(message, "publication title : (.+?)(?: /| \\])")),
@@ -173,9 +213,9 @@ public class CandidatsDoublonsService {
         return style;
     }
 
-    private Workbook openWorkbook() throws IOException {
-        return Files.exists(workbookPath())
-                ? WorkbookFactory.create(workbookPath().toFile())
+    private Workbook openWorkbook(Path workbookPath) throws IOException {
+        return Files.exists(workbookPath)
+                ? WorkbookFactory.create(workbookPath.toFile())
                 : new XSSFWorkbook();
     }
 
@@ -227,10 +267,9 @@ public class CandidatsDoublonsService {
                 .toList();
     }
 
-    private Path temporaryWorkbookPath() throws IOException {
-        Path workbookPath = workbookPath();
+    private Path temporaryWorkbookPath(Path workbookPath) throws IOException {
         Files.createDirectories(workbookPath.getParent());
-        return workbookPath.resolveSibling(WORKBOOK_FILENAME + ".tmp");
+        return workbookPath.resolveSibling(workbookPath.getFileName() + ".tmp");
     }
 
     private void writeTemporary(Workbook workbook, Path temporaryPath) throws IOException {
@@ -239,20 +278,37 @@ public class CandidatsDoublonsService {
         }
     }
 
-    private void replaceWorkbook(Path temporaryPath) throws IOException {
+    private void replaceWorkbook(Path temporaryPath, Path workbookPath) throws IOException {
         try {
             Files.move(
                     temporaryPath,
-                    workbookPath(),
+                    workbookPath,
                     StandardCopyOption.ATOMIC_MOVE,
                     StandardCopyOption.REPLACE_EXISTING
             );
         } catch (AtomicMoveNotSupportedException exception) {
-            Files.move(temporaryPath, workbookPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.move(temporaryPath, workbookPath, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 
-    private record CandidatDoublon(String ppn,
+    private enum CandidateType {
+        ELECTRONIC,
+        PRINTED;
+
+        private static CandidateType from(String message) {
+            String value = message.toLowerCase(java.util.Locale.ROOT);
+            if (value.contains("ppn électroniques")) {
+                return ELECTRONIC;
+            }
+            if (value.contains("ppn imprimés")) {
+                return PRINTED;
+            }
+            return null;
+        }
+    }
+
+    private record CandidatDoublon(CandidateType type,
+                                   String ppn,
                                    String command,
                                    String title,
                                    String resourceType,

@@ -23,15 +23,6 @@ class EmailServiceTest {
     }
 
     @Test
-    void sendsAnImmediateLinkToTheOtherReport() {
-        service.sendOtherErrorsEmail("TEST_PACKAGE.tsv");
-
-        assertEquals(1, service.sendCount);
-        assertTrue(service.requestJson.contains("bad/TEST_PACKAGE_other.bad"));
-        assertTrue(service.requestJson.contains("erreurs hors 400"));
-    }
-
-    @Test
     void sendsOneDailyEmailWithEvery400ReportSortedByName() {
         boolean sent = service.sendDailyRecapEmail(List.of("B_400.bad", "A_400.bad"));
 

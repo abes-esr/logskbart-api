@@ -14,7 +14,6 @@ import org.springframework.web.util.UriUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Path;
 import java.util.List;
 
 @Log4j2
@@ -32,22 +31,6 @@ public class EmailService {
 
     @Value("${serveur.url}")
     private String serveurUrl;
-
-    public void sendOtherErrorsEmail(String packageName) {
-        String safePackageName = Path.of(packageName).getFileName().toString();
-        String reportName = safePackageName.replaceFirst("(?i)\\.tsv$", "_other.bad");
-        String reportUrl = reportUrl(reportName);
-        String requestJson = mailToJSON(
-                this.recipient,
-                "[KBART2BACON : erreurs hors 400]" + getTag() + " " + safePackageName,
-                "<a href=\"" + reportUrl + "\" target=\"_blank\">Cliquez pour télécharger "
-                        + HtmlUtils.htmlEscape(reportName) + "</a>"
-        );
-
-        if (sendMail(requestJson)) {
-            log.info("L'email des erreurs hors 400 a été correctement envoyé à {}", recipient);
-        }
-    }
 
     public boolean sendDailyRecapEmail(List<String> filenames) {
         StringBuilder links = new StringBuilder("<p>Rapports d'erreurs 400 à traiter :</p>");

@@ -67,9 +67,8 @@ class LogsListenerTest {
 
         logsListener.notifyReports(filename, new BadReportResult(false, true));
 
-        verify(emailService).sendOtherErrorsEmail(filename);
+        verifyNoInteractions(emailService);
         verify(candidatsDoublonsService).append(filename);
-        verifyNoMoreInteractions(emailService);
     }
 
     @Test
@@ -80,9 +79,8 @@ class LogsListenerTest {
 
         logsListener.notifyReports(filename, new BadReportResult(false, true));
 
-        verify(emailService).sendOtherErrorsEmail(filename);
+        verifyNoInteractions(emailService);
         verify(candidatsDoublonsService).append(filename);
-        verifyNoMoreInteractions(emailService);
     }
 
     @Test
@@ -118,8 +116,7 @@ class LogsListenerTest {
         Path otherReport = tempLogDir.resolve("bad")
                 .resolve("TEST_PROVIDER_PACKAGE_2025-11-02_FORCE_other.bad");
         org.junit.jupiter.api.Assertions.assertTrue(Files.exists(otherReport));
-        verify(emailService).sendOtherErrorsEmail(filename);
+        verifyNoInteractions(emailService);
         verify(candidatsDoublonsService).append(filename);
-        verifyNoMoreInteractions(emailService);
     }
 }
