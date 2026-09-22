@@ -136,9 +136,6 @@ public class LogsListener {
             return;
         }
 
-        emailService.sendOtherErrorsEmail(filename);
-        if (candidatsDoublonsService.append(filename)) {
-            emailService.sendCandidatsDoublonsEmail(filename);
-        }
+        candidatsDoublonsService.append(filename);
     }
 }
