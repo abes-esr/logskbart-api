@@ -60,16 +60,15 @@ class LogsListenerTest {
     }
 
     @Test
-    @DisplayName("Les autres erreurs déclenchent les emails immédiats si des candidats sont exportés")
-    void sendsImmediateEmailsForOtherErrorsAndCandidates() throws IOException {
+    @DisplayName("Les candidats sont exportés sans déclencher d'email dédié")
+    void exportsCandidatesWithoutSendingDedicatedEmail() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2025-11-02.tsv";
         when(candidatsDoublonsService.append(filename)).thenReturn(true);
 
         logsListener.notifyReports(filename, new BadReportResult(false, true));
 
-        verify(emailService).sendOtherErrorsEmail(filename);
+        verifyNoInteractions(emailService);
         verify(candidatsDoublonsService).append(filename);
-        verify(emailService).sendCandidatsDoublonsEmail(filename);
     }
 
     @Test
@@ -80,9 +79,8 @@ class LogsListenerTest {
 
         logsListener.notifyReports(filename, new BadReportResult(false, true));
 
-        verify(emailService).sendOtherErrorsEmail(filename);
+        verifyNoInteractions(emailService);
         verify(candidatsDoublonsService).append(filename);
-        verify(emailService, never()).sendCandidatsDoublonsEmail(anyString());
     }
 
     @Test
@@ -118,8 +116,7 @@ class LogsListenerTest {
         Path otherReport = tempLogDir.resolve("bad")
                 .resolve("TEST_PROVIDER_PACKAGE_2025-11-02_FORCE_other.bad");
         org.junit.jupiter.api.Assertions.assertTrue(Files.exists(otherReport));
-        verify(emailService).sendOtherErrorsEmail(filename);
+        verifyNoInteractions(emailService);
         verify(candidatsDoublonsService).append(filename);
-        verify(emailService).sendCandidatsDoublonsEmail(filename);
     }
 }

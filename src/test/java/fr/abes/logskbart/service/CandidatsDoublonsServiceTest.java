@@ -65,7 +65,7 @@ class CandidatsDoublonsServiceTest {
         boolean appended = service.append(filename);
 
         assertTrue(appended);
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             Sheet sheet = workbook.getSheetAt(0);
             assertEquals("CandidatsDoublons", sheet.getSheetName());
             assertEquals(HEADERS, values(sheet.getRow(0)));
@@ -88,46 +88,68 @@ class CandidatsDoublonsServiceTest {
     }
 
     @Test
-    void appendsCandidatesAndPreservesHistoricalTxtFile() throws IOException {
+    void createsBouquetReportsAndPreservesHistoricalGlobalFiles() throws IOException {
         Path historicalTxt = tempDir.resolve("CandidatsDoublons.txt");
+        Path historicalXlsx = tempDir.resolve("CandidatsDoublons.xlsx");
         Files.writeString(historicalTxt, "historique à conserver");
+        Files.writeString(historicalXlsx, "ancien classeur à conserver");
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
 
         writeOtherReport("FIRST.tsv",
-                "1\tDoublon imprimé (111111111) [ publication title : Titre 1 "
+                "1\tPlusieurs ppn imprimés (111111111) ont été trouvés. [ publication title : Titre 1 "
                         + "/ publication_type : serial / online_identifier : 1111-1111 "
                         + "/ print_identifier : 2222-2222 ]");
         service.append("FIRST.tsv");
         writeOtherReport("SECOND.tsv",
-                "2\tDoublon électronique (222222222) [ publication title : Titre 2 "
+                "2\tPlusieurs ppn électroniques (222222222) ont le même score. [ publication title : Titre 2 "
                         + "/ publication_type : monograph / online_identifier : 3333-3333 "
                         + "/ print_identifier : 4444-4444 ]");
         service.append("SECOND.tsv");
 
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
-            Sheet sheet = workbook.getSheetAt(0);
-            assertEquals(2, sheet.getLastRowNum());
-            assertEquals("111111111", sheet.getRow(1).getCell(0).getStringCellValue());
-            assertEquals("222222222", sheet.getRow(2).getCell(0).getStringCellValue());
-        }
+        assertTrue(Files.exists(service.printedWorkbookPath("FIRST.tsv")));
+        assertTrue(Files.exists(service.electronicWorkbookPath("SECOND.tsv")));
         assertEquals("historique à conserver", Files.readString(historicalTxt));
+        assertEquals("ancien classeur à conserver", Files.readString(historicalXlsx));
+    }
+
+    @Test
+    void separatesElectronicAndPrintedCandidatesForTheProcessedBouquet() throws IOException {
+        String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
+        writeOtherReport(filename,
+                "1\tPlusieurs ppn électroniques (111111111 OU 222222222) ont le même score. "
+                        + "[ publication title : Titre électronique / publication_type : serial ]"
+                        + System.lineSeparator()
+                        + "2\tPlusieurs ppn imprimés (333333333 OU 444444444) ont été trouvés. "
+                        + "[ publication title : Titre imprimé / publication_type : monograph ]");
+        CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
+
+        assertTrue(service.append(filename));
+
+        Path electronic = tempDir.resolve("bad")
+                .resolve("TEST_PROVIDER_PACKAGE_2026-07-16_candidats_electroniques.xlsx");
+        Path printed = tempDir.resolve("bad")
+                .resolve("TEST_PROVIDER_PACKAGE_2026-07-16_candidats_imprimes.xlsx");
+        assertTrue(Files.exists(electronic));
+        assertTrue(Files.exists(printed));
+        assertEquals("Titre électronique", workbookValue(electronic, 1, 2));
+        assertEquals("Titre imprimé", workbookValue(printed, 1, 2));
+        assertFalse(Files.exists(tempDir.resolve("CandidatsDoublons.xlsx")));
     }
 
     @Test
     void removesForceAndBypassSuffixesFromBouquetNames() throws IOException {
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
         writeOtherReport("FIRST_FORCE.tsv",
-                "1\tDoublon (111111111) [ publication title : Titre 1 ]");
+                "1\tPlusieurs ppn électroniques (111111111) [ publication title : Titre 1 ]");
         service.append("FIRST_FORCE.tsv");
         writeOtherReport("SECOND_BYPASS.tsv",
-                "2\tDoublon (222222222) [ publication title : Titre 2 ]");
+                "2\tPlusieurs ppn électroniques (222222222) [ publication title : Titre 2 ]");
         service.append("SECOND_BYPASS.tsv");
 
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
-            Sheet sheet = workbook.getSheetAt(0);
-            assertEquals("FIRST", sheet.getRow(1).getCell(6).getStringCellValue());
-            assertEquals("SECOND", sheet.getRow(2).getCell(6).getStringCellValue());
-        }
+        assertEquals("FIRST", workbookValue(
+                service.electronicWorkbookPath("FIRST_FORCE.tsv"), 1, 6));
+        assertEquals("SECOND", workbookValue(
+                service.electronicWorkbookPath("SECOND_BYPASS.tsv"), 1, 6));
     }
 
     @Test
@@ -136,17 +158,18 @@ class CandidatsDoublonsServiceTest {
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
 
         assertFalse(service.append("INVALID.tsv"));
-        assertFalse(Files.exists(service.workbookPath()));
+        assertFalse(Files.exists(service.electronicWorkbookPath("INVALID.tsv")));
+        assertFalse(Files.exists(service.printedWorkbookPath("INVALID.tsv")));
     }
 
     @Test
     void formatsHeaderFreezesFirstRowAndEnablesFilter() throws IOException {
         String filename = "FORMATTED.tsv";
-        writeOtherReport(filename, "1\tDoublon (111111111) [ publication title : Un titre ]");
+        writeOtherReport(filename, "1\tPlusieurs ppn électroniques (111111111) [ publication title : Un titre ]");
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
         service.append(filename);
 
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             XSSFSheet sheet = (XSSFSheet) workbook.getSheetAt(0);
             assertNotNull(sheet.getPaneInformation());
             assertTrue(sheet.getPaneInformation().isFreezePane());
@@ -165,7 +188,7 @@ class CandidatsDoublonsServiceTest {
     @Test
     void doesNotAppendCandidateAlreadyPresentAndDoesNotRewriteWorkbook() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
-        String candidate = "1\tDoublon (111111111) [ publication title : Titre 1 "
+        String candidate = "1\tPlusieurs ppn électroniques (111111111) [ publication title : Titre 1 "
                 + "/ publication_type : serial / online_identifier : 1111-1111 "
                 + "/ print_identifier : 2222-2222 ]";
         writeOtherReport(filename, candidate);
@@ -173,12 +196,13 @@ class CandidatsDoublonsServiceTest {
 
         assertTrue(service.append(filename));
         FileTime marker = FileTime.from(Instant.parse("2020-01-01T00:00:00Z"));
-        Files.setLastModifiedTime(service.workbookPath(), marker);
+        Files.setLastModifiedTime(service.electronicWorkbookPath(filename), marker);
 
         assertFalse(service.append(filename));
-        assertEquals(marker, Files.getLastModifiedTime(service.workbookPath()));
-        assertFalse(Files.exists(service.workbookPath().resolveSibling("CandidatsDoublons.xlsx.tmp")));
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        assertEquals(marker, Files.getLastModifiedTime(service.electronicWorkbookPath(filename)));
+        assertFalse(Files.exists(service.electronicWorkbookPath(filename).resolveSibling(
+                service.electronicWorkbookPath(filename).getFileName() + ".tmp")));
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             assertEquals(1, workbook.getSheetAt(0).getLastRowNum());
         }
     }
@@ -186,7 +210,7 @@ class CandidatsDoublonsServiceTest {
     @Test
     void appendsOnlyOnceWhenReportContainsTheSameCandidateTwice() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
-        String candidate = "1\tDoublon (111111111) [ publication title : Titre 1 "
+        String candidate = "1\tPlusieurs ppn électroniques (111111111) [ publication title : Titre 1 "
                 + "/ publication_type : serial / online_identifier : 1111-1111 "
                 + "/ print_identifier : 2222-2222 ]";
         Files.writeString(
@@ -198,33 +222,34 @@ class CandidatsDoublonsServiceTest {
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
 
         assertTrue(service.append(filename));
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             assertEquals(1, workbook.getSheetAt(0).getLastRowNum());
         }
     }
 
     @Test
     void appendsOnlyNewCandidatesWhenWorkbookContainsExistingRows() throws IOException {
+        String filename = "SAME.tsv";
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
-        writeOtherReport("SAME.tsv",
-                "1\tDoublon (111111111) [ publication title : Existant "
+        writeOtherReport(filename,
+                "1\tPlusieurs ppn électroniques (111111111) [ publication title : Existant "
                         + "/ publication_type : serial / online_identifier : 1111-1111 "
                         + "/ print_identifier : 2222-2222 ]");
-        assertTrue(service.append("SAME.tsv"));
+        assertTrue(service.append(filename));
 
         Files.writeString(
-                badReportService.otherReportPath("SAME.tsv"),
+                badReportService.otherReportPath(filename),
                 "LINE\tMESSAGE\t" + System.lineSeparator()
-                        + "1\tDoublon (111111111) [ publication title : Existant "
+                        + "1\tPlusieurs ppn électroniques (111111111) [ publication title : Existant "
                         + "/ publication_type : serial / online_identifier : 1111-1111 "
                         + "/ print_identifier : 2222-2222 ]" + System.lineSeparator()
-                        + "2\tDoublon (222222222) [ publication title : Nouveau "
+                        + "2\tPlusieurs ppn électroniques (222222222) [ publication title : Nouveau "
                         + "/ publication_type : monograph / online_identifier : 3333-3333 "
                         + "/ print_identifier : 4444-4444 ]" + System.lineSeparator()
         );
 
-        assertTrue(service.append("SAME.tsv"));
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        assertTrue(service.append(filename));
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             Sheet sheet = workbook.getSheetAt(0);
             assertEquals(2, sheet.getLastRowNum());
             assertEquals("111111111", sheet.getRow(1).getCell(0).getStringCellValue());
@@ -236,7 +261,7 @@ class CandidatsDoublonsServiceTest {
     void treatsMissingEmptyAndSpacePaddedCellsAsTheSameNormalizedCandidate() throws IOException {
         String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
-        writeExistingCandidateWorkbook(service, List.of(
+        writeExistingCandidateWorkbook(service, filename, List.of(
                 " 111111111 ",
                 " che ppn 111111111 ",
                 " Titre 1 ",
@@ -244,16 +269,17 @@ class CandidatsDoublonsServiceTest {
                 "",
                 "",
                 " TEST_PROVIDER_PACKAGE_2026-07-16 ",
-                " Doublon "
+                " Plusieurs ppn électroniques "
         ), 3);
         writeOtherReport(filename,
-                "1\tDoublon (111111111) [ publication title : Titre 1 ]");
+                "1\tPlusieurs ppn électroniques (111111111) [ publication title : Titre 1 ]");
         FileTime marker = FileTime.from(Instant.parse("2020-01-01T00:00:00Z"));
-        Files.setLastModifiedTime(service.workbookPath(), marker);
+        Files.setLastModifiedTime(service.electronicWorkbookPath(filename), marker);
 
         assertFalse(service.append(filename));
-        assertEquals(marker, Files.getLastModifiedTime(service.workbookPath()));
-        assertFalse(Files.exists(service.workbookPath().resolveSibling("CandidatsDoublons.xlsx.tmp")));
+        assertEquals(marker, Files.getLastModifiedTime(service.electronicWorkbookPath(filename)));
+        assertFalse(Files.exists(service.electronicWorkbookPath(filename).resolveSibling(
+                service.electronicWorkbookPath(filename).getFileName() + ".tmp")));
     }
 
     @Test
@@ -261,14 +287,14 @@ class CandidatsDoublonsServiceTest {
         String filename = "TEST_PROVIDER_PACKAGE_2026-07-16.tsv";
         CandidatsDoublonsService service = new CandidatsDoublonsService(badReportService);
         writeOtherReport(filename,
-                "1\tDoublon (111111111) [ publication title : Titre 1 ]");
+                "1\tPlusieurs ppn électroniques (111111111) [ publication title : Titre 1 ]");
         assertTrue(service.append(filename));
 
         writeOtherReport(filename,
-                "1\tDoublon (111111111) [ publication title : titre 1 ]");
+                "1\tPlusieurs ppn électroniques (111111111) [ publication title : titre 1 ]");
 
         assertTrue(service.append(filename));
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             Sheet sheet = workbook.getSheetAt(0);
             assertEquals(2, sheet.getLastRowNum());
             assertEquals("Titre 1", sheet.getRow(1).getCell(2).getStringCellValue());
@@ -289,17 +315,17 @@ class CandidatsDoublonsServiceTest {
                 "2222-2222",
                 "1111-1111",
                 "TEST_PROVIDER_PACKAGE_2026-07-16",
-                "Doublon"
+                "Plusieurs ppn électroniques"
         ));
         existingValues.set(differentColumn, "valeur différente");
-        writeExistingCandidateWorkbook(service, existingValues, -1);
+        writeExistingCandidateWorkbook(service, filename, existingValues, -1);
         writeOtherReport(filename,
-                "1\tDoublon (111111111) [ publication title : Titre 1 "
+                "1\tPlusieurs ppn électroniques (111111111) [ publication title : Titre 1 "
                         + "/ publication_type : serial / online_identifier : 1111-1111 "
                         + "/ print_identifier : 2222-2222 ]");
 
         assertTrue(service.append(filename));
-        try (Workbook workbook = WorkbookFactory.create(service.workbookPath().toFile())) {
+        try (Workbook workbook = WorkbookFactory.create(service.electronicWorkbookPath(filename).toFile())) {
             assertEquals(2, workbook.getSheetAt(0).getLastRowNum());
         }
     }
@@ -312,6 +338,7 @@ class CandidatsDoublonsServiceTest {
     }
 
     private void writeExistingCandidateWorkbook(CandidatsDoublonsService service,
+                                                String filename,
                                                 List<String> existingValues,
                                                 int missingCellIndex) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
@@ -323,7 +350,9 @@ class CandidatsDoublonsServiceTest {
             IntStream.range(0, existingValues.size())
                     .filter(index -> index != missingCellIndex)
                     .forEach(index -> existingRow.createCell(index).setCellValue(existingValues.get(index)));
-            try (var output = Files.newOutputStream(service.workbookPath())) {
+            Path path = service.electronicWorkbookPath(filename);
+            Files.createDirectories(path.getParent());
+            try (var output = Files.newOutputStream(path)) {
                 workbook.write(output);
             }
         }
@@ -333,5 +362,11 @@ class CandidatsDoublonsServiceTest {
         return IntStream.range(0, HEADERS.size())
                 .mapToObj(index -> row.getCell(index).getStringCellValue())
                 .toList();
+    }
+
+    private String workbookValue(Path path, int row, int column) throws IOException {
+        try (Workbook workbook = WorkbookFactory.create(path.toFile())) {
+            return workbook.getSheetAt(0).getRow(row).getCell(column).getStringCellValue();
+        }
     }
 }
