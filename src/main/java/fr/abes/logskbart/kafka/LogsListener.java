@@ -16,8 +16,6 @@ import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -121,12 +119,6 @@ public class LogsListener {
                 filename,
                 workInProgressMap.get(filename).getMessages()
         );
-
-        if (result.has400Errors() || result.hasOtherErrors()) {
-            Path logFile = badReportService.reportDirectory().resolve(filename.replace(".tsv", ".log"));
-            log.info("Suppression de {}", logFile);
-            Files.deleteIfExists(logFile);
-        }
 
         return result;
     }
